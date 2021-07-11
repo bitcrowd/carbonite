@@ -59,7 +59,7 @@ defmodule CarboniteTest do
       assert TestRepo.reload(tx).meta == %{"foo" => 1}
     end
 
-    test "inserts on tables are tracked as changes" do
+    test "INSERTs on tables are tracked as changes" do
       {:ok,
        %{
          carbonite_transaction: %Carbonite.Transaction{id: tx_id} = tx,
@@ -86,7 +86,7 @@ defmodule CarboniteTest do
       assert row_data == %{"id" => to_string(rabbit_id), "name" => "Jack"}
     end
 
-    test "updates on tables are tracked as changes" do
+    test "UPDATEs on tables are tracked as changes" do
       {:ok, %{carbonite_transaction: %Carbonite.Transaction{} = tx}} =
         Ecto.Multi.new()
         |> Carbonite.insert("rabbit_inserted")
@@ -112,7 +112,7 @@ defmodule CarboniteTest do
              ] = TestRepo.preload(tx, :changes).changes
     end
 
-    test "updates on only excluded fields are not tracked" do
+    test "UPDATEs on only excluded fields are not tracked" do
       {:ok, %{carbonite_transaction: %Carbonite.Transaction{} = tx}} =
         Ecto.Multi.new()
         |> Carbonite.insert("rabbit_inserted")
@@ -122,6 +122,32 @@ defmodule CarboniteTest do
         |> TestRepo.transaction()
 
       assert [%Carbonite.Change{op: :insert}] = TestRepo.preload(tx, :changes).changes
+    end
+
+    test "DELETEs on tables are tracked as changes" do
+      {:ok, %{carbonite_transaction: %Carbonite.Transaction{} = tx}} =
+        Ecto.Multi.new()
+        |> Carbonite.insert("rabbit_inserted")
+        |> Ecto.Multi.put(:params, %{name: "Jack", age: 99})
+        |> Ecto.Multi.insert(:rabbit, &Rabbit.create_changeset(&1.params))
+        |> Ecto.Multi.delete(:dead_rabbit, & &1.rabbit)
+        |> TestRepo.transaction()
+
+      # old data is in 'row_data', changes are in 'changes'
+      assert [
+               %Carbonite.Change{
+                 changes: nil,
+                 op: :insert,
+                 row_data: %{"name" => "Jack"},
+                 table_name: "rabbits"
+               },
+               %Carbonite.Change{
+                 changes: nil,
+                 op: :delete,
+                 row_data: %{"name" => "Jack"},
+                 table_name: "rabbits"
+               }
+             ] = TestRepo.preload(tx, :changes).changes
     end
 
     test "a friendly error is raised when transaction is not inserted or is inserted too late" do
