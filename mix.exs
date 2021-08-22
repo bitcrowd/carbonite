@@ -27,8 +27,8 @@ defmodule Carbonite.MixProject do
       {:ecto_sql, "~> 3.6"},
       {:jason, "~> 1.2"},
       {:postgrex, ">= 0.0.0"},
-      {:credo, "~> 1.5", only: [:dev, :test]},
-      {:dialyxir, "~> 1.1", only: [:dev, :test]}
+      {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.1", only: [:dev, :test], runtime: false}
     ]
   end
 
