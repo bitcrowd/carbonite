@@ -10,3 +10,7 @@ if config_env() in [:dev, :test] do
 
   config :carbonite, ecto_repos: [Carbonite.TestRepo]
 end
+
+if config_env() == :test do
+  config :logger, level: :info
+end
