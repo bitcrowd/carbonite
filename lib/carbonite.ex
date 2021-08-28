@@ -5,6 +5,8 @@ defmodule Carbonite do
 
   alias Carbonite.Transaction
 
+  @default_prefix "carbonite_default"
+
   @type build_option :: {:meta, Transaction.meta()}
   @type insert_option :: {:prefix, binary()} | build_option()
 
@@ -26,6 +28,7 @@ defmodule Carbonite do
     insert_opts =
       opts
       |> Keyword.take([:prefix])
+      |> Keyword.put_new(:prefix, @default_prefix)
       |> Keyword.put_new(:returning, [:id])
 
     Ecto.Multi.insert(

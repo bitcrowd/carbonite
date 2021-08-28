@@ -20,7 +20,7 @@ defmodule Carbonite.MixProject do
   end
 
   defp elixirc_paths(env) when env in [:dev, :test], do: ["lib", "test/support"]
-  defp elixirc_paths(:prod), do: ["lib"]
+  defp elixirc_paths(_env), do: ["lib"]
 
   defp deps do
     [

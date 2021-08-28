@@ -18,7 +18,7 @@ defmodule Carbonite.Change do
           transaction: Ecto.Association.NotLoaded.t() | Carbonite.Transaction.t()
         }
 
-  schema "carbonite_changes" do
+  schema "changes" do
     field(:id, :integer, primary_key: true)
     field(:op, Ecto.Enum, values: [:insert, :update, :delete])
     field(:table_name, :string)

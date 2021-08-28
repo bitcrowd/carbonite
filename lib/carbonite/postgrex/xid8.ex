@@ -1,6 +1,8 @@
 defmodule Carbonite.Postgrex.Xid8 do
   @moduledoc false
 
+  # TODO: This will be obsolete with the next postgrex release, which will have Xid8 support.
+
   import Postgrex.BinaryUtils, warn: false
   use Postgrex.BinaryExtension, send: "xid8send"
 

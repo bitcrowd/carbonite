@@ -1,6 +1,8 @@
 defmodule Carbonite.Transaction do
   @moduledoc """
-  TODO
+  A `Carbonite.Transaction` is the binding link between change records of tables.
+
+  As such, it contains a mandatory `type` attribute as well as a set of optional metadata.
   """
 
   use Ecto.Schema
@@ -9,33 +11,31 @@ defmodule Carbonite.Transaction do
   @primary_key false
   @timestamps_opts [type: :utc_datetime_usec]
 
-  @type type :: String.t()
-  @type meta :: map()
-
   @type t :: %__MODULE__{
           id: non_neg_integer(),
-          type: type(),
-          meta: meta(),
+          type: String.t(),
+          meta: map(),
           inserted_at: DateTime.t(),
           changes: Ecto.Association.NotLoaded.t() | [Carbonite.Change.t()]
         }
 
-  schema "carbonite_transactions" do
+  schema "transactions" do
     field(:id, :integer, primary_key: true)
     field(:type, :string)
     field(:meta, :map)
 
     timestamps(updated_at: false)
 
-    #    has_many(:changes, Carbonite.Change, references: :id)
     has_many(:changes, Carbonite.Change, references: :id)
   end
 
   @doc """
-  Builds a changeset for insertion.
+  Builds a changeset for a `Carbonite.Transaction`.
   """
-  def create_changeset(params) do
-    %__MODULE__{}
+  @spec changeset(params :: map()) :: Ecto.Changeset.t()
+  @spec changeset(t(), params :: map()) :: Ecto.Changeset.t()
+  def changeset(transaction \\ %__MODULE__{}, params) do
+    transaction
     |> cast(params, [:type, :meta])
     |> validate_required([:type])
   end

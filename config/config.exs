@@ -2,7 +2,7 @@ import Config
 
 if config_env() in [:dev, :test] do
   config :carbonite, Carbonite.TestRepo,
-    database: "carbonite_test_repo",
+    database: "carbonite_#{config_env()}",
     username: "postgres",
     password: "postgres",
     hostname: "localhost",
@@ -13,4 +13,6 @@ end
 
 if config_env() == :test do
   config :logger, level: :info
+
+  config :carbonite, Carbonite.TestRepo, pool: Ecto.Adapters.SQL.Sandbox
 end
