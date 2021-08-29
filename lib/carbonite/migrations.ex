@@ -113,11 +113,11 @@ defmodule Carbonite.Migrations do
     $body$
     DECLARE
       change_row #{prefix}.changes;
-      excluded_columns text[];
+      trigger_row #{prefix}.triggers;
     BEGIN
       /* load trigger config */
-      SELECT #{prefix}.triggers.excluded_columns
-        INTO excluded_columns
+      SELECT *
+        INTO trigger_row
         FROM #{prefix}.triggers
         WHERE table_prefix = TG_TABLE_SCHEMA AND table_name = TG_TABLE_NAME;
 
@@ -134,17 +134,17 @@ defmodule Carbonite.Migrations do
 
       /* fill in changed data */
       IF (TG_OP = 'UPDATE') THEN
-        change_row.old = to_jsonb(OLD.*) - excluded_columns;
-        change_row.new = to_jsonb(NEW.*) - excluded_columns;
+        change_row.old = to_jsonb(OLD.*) - trigger_row.excluded_columns;
+        change_row.new = to_jsonb(NEW.*) - trigger_row.excluded_columns;
 
         IF change_row.old = change_row.new THEN
           /* All changed fields are ignored. Skip this update. */
           RETURN NULL;
         END IF;
       ELSIF (TG_OP = 'DELETE') THEN
-        change_row.old = to_jsonb(OLD.*) - excluded_columns;
+        change_row.old = to_jsonb(OLD.*) - trigger_row.excluded_columns;
       ELSIF (TG_OP = 'INSERT') THEN
-        change_row.new = to_jsonb(NEW.*) - excluded_columns;
+        change_row.new = to_jsonb(NEW.*) - trigger_row.excluded_columns;
       END IF;
 
       /* insert, fail gracefully unless transaction record present */
