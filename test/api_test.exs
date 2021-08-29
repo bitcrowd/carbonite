@@ -18,6 +18,14 @@ defmodule APITest do
 
       assert changeset.changes.meta == %{foo: 1}
     end
+
+    test "merges metadata from process dictionary" do
+      Carbonite.put_meta(:foo, 1)
+      Carbonite.put_meta(:bar, 1)
+      %Ecto.Changeset{} = changeset = Carbonite.build(meta: %{foo: 2})
+
+      assert changeset.changes.meta == %{foo: 2, bar: 1}
+    end
   end
 
   describe "insert/3" do
@@ -46,6 +54,17 @@ defmodule APITest do
 
       # atoms deserialize to strings
       assert TestRepo.reload(tx).meta == %{"foo" => 1}
+    end
+
+    test "merges metadata from process dictionary" do
+      Carbonite.put_meta(:foo, 1)
+
+      {:ok, %{carbonite_transaction: %Carbonite.Transaction{} = tx}} =
+        Ecto.Multi.new()
+        |> Carbonite.insert()
+        |> TestRepo.transaction()
+
+      assert tx.meta == %{foo: 1}
     end
   end
 
