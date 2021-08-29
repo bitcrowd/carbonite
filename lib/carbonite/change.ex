@@ -13,8 +13,8 @@ defmodule Carbonite.Change do
           op: :insert | :update | :delete,
           table_name: String.t(),
           relid: non_neg_integer(),
-          row_data: map(),
-          changes: nil | map(),
+          old: nil | map(),
+          new: nil | map(),
           transaction: Ecto.Association.NotLoaded.t() | Carbonite.Transaction.t()
         }
 
@@ -23,8 +23,8 @@ defmodule Carbonite.Change do
     field(:op, Ecto.Enum, values: [:insert, :update, :delete])
     field(:table_name, :string)
     field(:relid, :integer)
-    field(:row_data, :map)
-    field(:changes, :map)
+    field(:old, :map)
+    field(:new, :map)
 
     belongs_to(:transaction, Carbonite.Transaction)
   end

@@ -28,7 +28,6 @@ defmodule Carbonite.Migrations do
     # ----------------- Setup --------------------
 
     execute("CREATE SCHEMA IF NOT EXISTS #{prefix}")
-    execute("CREATE EXTENSION IF NOT EXISTS hstore;")
 
     # -------------- Transactions ----------------
 
@@ -81,8 +80,8 @@ defmodule Carbonite.Migrations do
       add(:op, :"#{prefix}.change_op", null: false)
       add(:table_prefix, :string, null: false)
       add(:table_name, :string, null: false)
-      add(:row_data, :hstore, null: false)
-      add(:changes, :hstore)
+      add(:old, :jsonb)
+      add(:new, :jsonb)
     end
 
     create(index("changes", [:transaction_id], prefix: prefix))
@@ -135,16 +134,17 @@ defmodule Carbonite.Migrations do
 
       /* fill in changed data */
       IF (TG_OP = 'UPDATE') THEN
-        change_row.row_data = hstore(OLD.*) - excluded_columns;
-        change_row.changes =  (hstore(NEW.*) - change_row.row_data) - excluded_columns;
-        IF change_row.changes = hstore('') THEN
+        change_row.old = to_jsonb(OLD.*) - excluded_columns;
+        change_row.new = to_jsonb(NEW.*) - excluded_columns;
+
+        IF change_row.old = change_row.new THEN
           /* All changed fields are ignored. Skip this update. */
           RETURN NULL;
         END IF;
       ELSIF (TG_OP = 'DELETE') THEN
-        change_row.row_data = hstore(OLD.*) - excluded_columns;
+        change_row.old = to_jsonb(OLD.*) - excluded_columns;
       ELSIF (TG_OP = 'INSERT') THEN
-        change_row.row_data = hstore(NEW.*) - excluded_columns;
+        change_row.new = to_jsonb(NEW.*) - excluded_columns;
       END IF;
 
       /* insert, fail gracefully unless transaction record present */

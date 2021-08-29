@@ -11,9 +11,7 @@ defmodule CaptureTest do
   end
 
   defp insert_transaction do
-    execute(
-      "INSERT INTO carbonite_default.transactions (inserted_at) VALUES (NOW());"
-    )
+    execute("INSERT INTO carbonite_default.transactions (inserted_at) VALUES (NOW());")
   end
 
   defp insert_jack do
@@ -54,8 +52,8 @@ defmodule CaptureTest do
                  "table_prefix" => "public",
                  "table_name" => "rabbits",
                  "op" => "insert",
-                 "row_data" => %{"id" => _, "name" => "Jack"},
-                 "changes" => nil
+                 "old" => nil,
+                 "new" => %{"id" => _, "name" => "Jack"}
                }
              ] = select_changes()
     end
@@ -70,13 +68,13 @@ defmodule CaptureTest do
       assert [
                %{
                  "op" => "insert",
-                 "row_data" => %{"id" => _, "name" => "Jack"},
-                 "changes" => nil
+                 "old" => nil,
+                 "new" => %{"id" => _, "name" => "Jack"}
                },
                %{
                  "op" => "update",
-                 "row_data" => %{"id" => _, "name" => "Jack"},
-                 "changes" => %{"name" => "Jane"}
+                 "old" => %{"id" => _, "name" => "Jack"},
+                 "new" => %{"id" => _, "name" => "Jane"}
                }
              ] = select_changes()
     end
@@ -91,13 +89,13 @@ defmodule CaptureTest do
       assert [
                %{
                  "op" => "insert",
-                 "row_data" => %{"id" => _, "name" => "Jack"},
-                 "changes" => nil
+                 "old" => nil,
+                 "new" => %{"id" => _, "name" => "Jack"}
                },
                %{
                  "op" => "delete",
-                 "row_data" => %{"id" => _, "name" => "Jack"},
-                 "changes" => nil
+                 "old" => %{"id" => _, "name" => "Jack"},
+                 "new" => nil
                }
              ] = select_changes()
     end
@@ -120,8 +118,8 @@ defmodule CaptureTest do
         insert_jack()
       end)
 
-      assert [%{"row_data" => row_data}] = select_changes()
-      refute Map.has_key?(row_data, "age")
+      assert [%{"new" => new}] = select_changes()
+      refute Map.has_key?(new, "age")
     end
 
     test "UPDATEs on only excluded fields are not tracked" do
