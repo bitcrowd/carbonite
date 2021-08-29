@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 defmodule Carbonite.Migrations do
   @moduledoc """
   Functions to setup Carbonite audit trails in your migrations.

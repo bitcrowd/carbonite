@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 defmodule Carbonite.Change do
   @moduledoc """
   A `Carbonite.Change` records a mutation on a database table.

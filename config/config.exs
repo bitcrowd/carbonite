@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 import Config
 
 config :carbonite, default_prefix: "carbonite_default"

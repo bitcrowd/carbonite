@@ -1,4 +1,11 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # Carbonite
+
+[![Hex pm](http://img.shields.io/hexpm/v/carbonite.svg?style=flat)](https://hex.pm/packages/carbonite)
+[![Hex docs](http://img.shields.io/badge/hex.pm-docs-green.svg?style=flat)](https://hexdocs.pm/carbonite/Carbonite.html)
+[![License](https://img.shields.io/hexpm/l/carbonite?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
+<!-- [![CircleCI](https://circleci.com/gh/bitcrowd/carbonite.svg?style=shield)](https://circleci.com/gh/bitcrowd/carbonite) -->
 
 Carbonite implements the [Change-Data-Capture](https://en.wikipedia.org/wiki/Change_data_capture) pattern on top of a PostgreSQL database and makes it available for Elixir applications. It uses triggers to automatically record all changes applied to a table in order to guarantee a complete audit trail of the contained data.
 
@@ -13,11 +20,11 @@ For instance, when a payment for a pending invoice is received, your application
   - No mutation without recorded `Change`
   - No `Change` without `Transaction`
 - Accessible Elixir interfaces to the audit data
+- Optional processing & purging logic (Outbox pattern)
 
 ## Acknowledgements
 
-* The trigger-based table versioning draws inspiration from [`audit_trigger_91plus`](https://wiki.postgresql.org/wiki/Audit_trigger_91plus), an "example of a generic trigger function" hosted in the PostgreSQL wiki.
-* A lot of the boilerplate code in Carbonite (especially in `Carbonite.Migrations`) is adapted from the terrific codebase of [Oban](https://github.com/sorentwo/oban).
+The trigger-based table versioning draws inspiration from [`audit_trigger_91plus`](https://wiki.postgresql.org/wiki/Audit_trigger_91plus), an "example of a generic trigger function" hosted in the PostgreSQL wiki.
 
 ## Trigger vs. Write-Ahead-Log
 
@@ -32,8 +39,6 @@ This package requires PostreSQL version 13 or above due to its use of `pg_curren
 ```
 ** (Postgrex.Error) ERROR 42704 (undefined_object) type "xid8" does not exist
 ```
-
-The package enables the `hstore` extension which should ship with your Postgres installation.
 
 ### Hex dependency
 
@@ -109,6 +114,7 @@ Ecto.Multi.new()
 ### probably
 
 * `purge`: Function that evicts records from the DB to be sent to external storage (event store), to be executed in recurrent job
+* drop `Xid` postgrex type once postgrex has been released
 
 ### maybe
 

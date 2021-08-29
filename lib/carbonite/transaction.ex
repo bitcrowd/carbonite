@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 defmodule Carbonite.Transaction do
   @moduledoc """
   A `Carbonite.Transaction` is the binding link between change records of tables.

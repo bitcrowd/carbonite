@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 defmodule Carbonite.Postgrex.Xid8 do
   @moduledoc false
 

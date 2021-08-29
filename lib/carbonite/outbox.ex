@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 defmodule Carbonite.Outbox do
   @moduledoc """
   Implements the outbox pattern to process (and evict) recorded transactions in the database,

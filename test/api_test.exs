@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 defmodule APITest do
   use ExUnit.Case, async: true
   alias Carbonite.{Rabbit, TestRepo}

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 defmodule Carbonite.Trigger do
   @moduledoc """
   A `Carbonite.Trigger` stores per table configuration for the change capture trigger.

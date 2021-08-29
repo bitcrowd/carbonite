@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 defmodule Carbonite.TestRepo.Migrations.CreateRabbits do
   use Ecto.Migration
 

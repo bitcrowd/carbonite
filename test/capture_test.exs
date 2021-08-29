@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 defmodule CaptureTest do
   use ExUnit.Case, async: true
   import Carbonite.TestRepo, only: [transaction: 1]
