@@ -34,9 +34,17 @@ defmodule Carbonite.Migrations do
     create table("transactions", primary_key: false, prefix: prefix) do
       add(:id, :xid8, null: false, primary_key: true)
       add(:meta, :map, null: false, default: %{})
+      add(:processed_at, :utc_datetime_usec)
 
       timestamps(updated_at: false, type: :utc_datetime_usec)
     end
+
+    create(
+      index("transactions", [:inserted_at],
+        where: "processed_at IS NULL",
+        prefix: prefix
+      )
+    )
 
     """
     CREATE FUNCTION #{prefix}.set_transaction_id() RETURNS TRIGGER AS
