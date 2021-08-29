@@ -34,7 +34,6 @@ defmodule Carbonite.Migrations do
 
     create table("transactions", primary_key: false, prefix: prefix) do
       add(:id, :xid8, null: false, primary_key: true)
-      add(:type, :string, null: false)
       add(:meta, :map, null: false, default: %{})
 
       timestamps(updated_at: false, type: :utc_datetime_usec)

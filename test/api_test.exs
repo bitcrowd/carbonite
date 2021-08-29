@@ -8,23 +8,15 @@ defmodule APITest do
 
   describe "build/2" do
     test "builds an Ecto.Changeset for a transaction" do
-      %Ecto.Changeset{} = changeset = Carbonite.build("rabbit_inserted")
+      %Ecto.Changeset{} = changeset = Carbonite.build()
 
-      assert changeset.changes.type == "rabbit_inserted"
       assert changeset.changes.meta == %{}
     end
 
     test "allows setting metadata" do
-      %Ecto.Changeset{} = changeset = Carbonite.build("rabbit_inserted", meta: %{foo: 1})
+      %Ecto.Changeset{} = changeset = Carbonite.build(meta: %{foo: 1})
 
       assert changeset.changes.meta == %{foo: 1}
-    end
-
-    test "validates presence of type" do
-      %Ecto.Changeset{} = changeset = Carbonite.build(nil)
-
-      refute changeset.valid?
-      assert {:type, {"can't be blank", [validation: :required]}} in changeset.errors
     end
   end
 
@@ -32,12 +24,11 @@ defmodule APITest do
     test "inserts a transaction within an Ecto.Multi" do
       {:ok, %{carbonite_transaction: %Carbonite.Transaction{} = tx}} =
         Ecto.Multi.new()
-        |> Carbonite.insert("rabbit_inserted")
+        |> Carbonite.insert()
         |> Ecto.Multi.put(:params, %{name: "Jack", age: 99})
         |> Ecto.Multi.insert(:rabbit, &Rabbit.create_changeset(&1.params))
         |> TestRepo.transaction()
 
-      assert tx.type == "rabbit_inserted"
       assert tx.meta == %{}
       assert_almost_now(tx.inserted_at)
 
@@ -45,13 +36,12 @@ defmodule APITest do
       assert %Ecto.Association.NotLoaded{} = tx.changes
     end
 
-    test "has `meta` option to set metadata" do
+    test "allows setting metadata" do
       {:ok, %{carbonite_transaction: %Carbonite.Transaction{} = tx}} =
         Ecto.Multi.new()
-        |> Carbonite.insert("rabbit_inserted", meta: %{foo: 1})
+        |> Carbonite.insert(meta: %{foo: 1})
         |> TestRepo.transaction()
 
-      assert tx.type == "rabbit_inserted"
       assert tx.meta == %{foo: 1}
 
       # atoms deserialize to strings

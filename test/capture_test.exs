@@ -12,7 +12,7 @@ defmodule CaptureTest do
 
   defp insert_transaction do
     execute(
-      "INSERT INTO carbonite_default.transactions (type, inserted_at) VALUES ('test', NOW());"
+      "INSERT INTO carbonite_default.transactions (inserted_at) VALUES (NOW());"
     )
   end
 
