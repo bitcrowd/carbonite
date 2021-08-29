@@ -22,4 +22,12 @@ defmodule Carbonite.Rabbit do
   def age_changeset(%__MODULE__{} = rabbit) do
     change(rabbit, %{age: rabbit.age + 1})
   end
+
+  # Dirty little helper to make rabbits on the console.
+  def make do
+    Ecto.Multi.new()
+    |> Carbonite.insert()
+    |> Ecto.Multi.insert(:rabbit, fn _ -> create_changeset(%{age: 101, name: "Janet"}) end)
+    |> Carbonite.TestRepo.transaction()
+  end
 end

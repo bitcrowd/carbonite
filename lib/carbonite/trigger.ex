@@ -1,6 +1,6 @@
 defmodule Carbonite.Trigger do
   @moduledoc """
-  TODO
+  A `Carbonite.Trigger` stores per table configuration for the change capture trigger.
   """
 
   use Ecto.Schema

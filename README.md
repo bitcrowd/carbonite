@@ -80,9 +80,14 @@ mix ecto.gen.migration InstallCarbonite
 defmodule MyApp.Repo.Migrations.InstallCarbonite do
   use Ecto.Migration
 
-  def change do
-    Carbonite.Migrations.up()
-    Carbonite.Migrations.install_on_table(:rabbits, except: [:age])
+  def up do
+    Carbonite.Migrations.install()
+    Carbonite.Migrations.install_trigger(:rabbits, excluded_columns: ["age"])
+  end
+
+  def down do
+    Carbonite.Migrations.drop_trigger(:rabbits)
+    execute("DROP SCHEMA carbonite_default;")
   end
 end
 ```
@@ -101,7 +106,11 @@ Ecto.Multi.new()
 
 ## Roadmap
 
-* make `install_on_table` idempotent to allow re-installs
+### probably
+
+* `purge`: Function that evicts records from the DB to be sent to external storage (event store), to be executed in recurrent job
+
+### maybe
+
 * table versioning: Optional version numbers for "main" tables (i.e. add a `version` field and a trigger `BEFORE UPDATE` that bumps it)
 * `checksum`: Function that fetches non-checksum'ed transactions from DB and builds a checksum chain across them, to be executed in recurrent job
-* `purge`: Function that evicts records from the DB to be sent to external storage (event store), to be executed in recurrent job

@@ -2,7 +2,7 @@ defmodule Carbonite.Transaction do
   @moduledoc """
   A `Carbonite.Transaction` is the binding link between change records of tables.
 
-  As such, it stores a set of optional metadata that describes the transaction.
+  As such, it contains a set of optional metadata that describes the transaction.
   """
 
   use Ecto.Schema

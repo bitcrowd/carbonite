@@ -5,7 +5,7 @@ defmodule Carbonite.Migrations do
 
   use Ecto.Migration
 
-  @default_prefix "carbonite_default"
+  @default_prefix Application.compile_env!(:carbonite, :default_prefix)
   @default_table_prefix "public"
 
   @type carbonite_option :: {:prefix, String.t()}
@@ -25,7 +25,7 @@ defmodule Carbonite.Migrations do
   def install(opts \\ []) when is_list(opts) do
     prefix = Keyword.get(opts, :prefix, @default_prefix)
 
-    # ----------------- Setup --------------------
+    # ---------------- Schema --------------------
 
     execute("CREATE SCHEMA IF NOT EXISTS #{prefix}")
 

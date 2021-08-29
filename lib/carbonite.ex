@@ -4,8 +4,9 @@ defmodule Carbonite do
   """
 
   alias Carbonite.Transaction
+  alias Ecto.Multi
 
-  @default_prefix "carbonite_default"
+  @default_prefix Application.compile_env!(:carbonite, :default_prefix)
   @meta_pdict_key :carbonite_meta
 
   @type meta :: map()
@@ -28,16 +29,16 @@ defmodule Carbonite do
   @doc """
   TODO
   """
-  @spec insert(Ecto.Multi.t()) :: Ecto.Multi.t()
-  @spec insert(Ecto.Multi.t(), [insert_option()]) :: Ecto.Multi.t()
-  def insert(%Ecto.Multi{} = multi, opts \\ []) do
+  @spec insert(Multi.t()) :: Multi.t()
+  @spec insert(Multi.t(), [insert_option()]) :: Multi.t()
+  def insert(%Multi{} = multi, opts \\ []) do
     insert_opts =
       opts
       |> Keyword.take([:prefix])
       |> Keyword.put_new(:prefix, @default_prefix)
       |> Keyword.put_new(:returning, [:id])
 
-    Ecto.Multi.insert(
+    Multi.insert(
       multi,
       :carbonite_transaction,
       fn _state -> build(opts) end,
