@@ -7,9 +7,9 @@
 [![License](https://img.shields.io/hexpm/l/carbonite?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
 <!-- [![CircleCI](https://circleci.com/gh/bitcrowd/carbonite.svg?style=shield)](https://circleci.com/gh/bitcrowd/carbonite) -->
 
-Carbonite implements the [Change-Data-Capture](https://en.wikipedia.org/wiki/Change_data_capture) pattern on top of a PostgreSQL database and makes it available for Elixir applications. It uses triggers to automatically record all changes applied to a table in order to guarantee a complete audit trail of the contained data.
+Carbonite implements the [Change-Data-Capture](https://en.wikipedia.org/wiki/Change_data_capture) pattern on top of a PostgreSQL database and makes it easy to integrate into Elixir applications. It uses triggers to automatically record all changes applied to a database table in order to guarantee a complete audit trail of the contained data.
 
-It is centered around the idea that the database transaction is the natural auditing unit of data mutation. Any mutation on a participating table requires the user first to record the operation metadata within the same database transaction. The metadata record is associated to the table change records by a constraint.
+It is centered around the idea that the database transaction is the natural auditing unit of data mutation. Any mutation on a participating table requires the developer first to record the operation metadata within the same database transaction. The metadata record is associated to the table change records by a constraint.
 
 For instance, when a payment for a pending invoice is received, your application might create a record in the `payments` table and update the `invoices` record. Both of these mutations are recorded as a `Carbonite.Change` and are associated to a single `Carbonite.Transaction` which allows to correlate these mutations and provides (at least) a `type` attribute, e.g. `payment_received`.
 
@@ -21,6 +21,7 @@ For instance, when a payment for a pending invoice is received, your application
   - No `Change` without `Transaction`
 - Accessible Elixir interfaces to the audit data
 - Optional processing & purging logic (Outbox pattern)
+- Based on [Ecto](https://hex.pm/packages/ecto) and [Postgrex](https://hex.pm/packages/postgrex) with no further dependencies.
 
 ## Acknowledgements
 
@@ -34,7 +35,7 @@ Existing solutions for CDC on top of a PostgreSQL database (e.g., [Debezium](htt
 
 ### Requires PostgreSQL 13
 
-This package requires PostreSQL version 13 or above due to its use of `pg_current_xact_id`. If you see an error message like the following, your Postgres installation is too old:
+This package requires PostreSQL version 13 or above due to its use of `pg_current_xact_id`. If you see an error message like the following, your PostgreSQL installation is too old:
 
 ```
 ** (Postgrex.Error) ERROR 42704 (undefined_object) type "xid8" does not exist
@@ -54,7 +55,7 @@ end
 
 ### Add Postgrex type for `xid8`
 
-To load Postgres' `xid8` 64-bit type, we need to tell Postgrex to cast it to an Elixir integer.
+To load PostgreSQL's `xid8` 64-bit type, we need to tell Postgrex to cast it to an Elixir integer.
 
 ```elixir
 # lib/my_app/postgrex_types.ex
@@ -73,7 +74,24 @@ config :carbonite, MyApp.Repo,
   types: MyApp.PostgrexTypes
 ```
 
-### Create migrations
+Note that this will go away as soon as the next Postgrex version has been released.
+
+## Usage
+
+<!-- MDOC -->
+
+Carbonite implements the [Change-Data-Capture](https://en.wikipedia.org/wiki/Change_data_capture) pattern on top of PostgreSQL using database triggers. It keeps a central `changes` table where all mutations of participating tables are recorded. Each `changes` row is associated to a single row in the `transactions` table using PostgreSQL's _internal transaction id_ as the foreign key. This leads to the following interesting properties:
+
+- All `changes` created within a database transaction automatically and implicitly belong to the same record in the `transactions` table, even if they're created separatedly and agnostic of each other in the application logic. This gives the developer a "natural" way to group related changes into events (more on events later).
+- As the `changes` table is associated to the `transactions` table via a non-nullable foreign key constraint, the entry in the `transactions` table _must be created before any `changes`_. Attempting to modify a versioned table without prior insertion into the `transactions` table will result in an error. The `transactions` table carries transactional metadata which can be set by the developer on creation.
+
+Consequently, much of Carbonite's logic lives in database functions and triggers. To get started, we need to create a migration using Ecto.
+
+### Migration
+
+The following migration installs Carbonite into its "default prefix", a PostgreSQL _schema_ aptly called `carbonite_default`, and installs the change capture trigger for an exemplary table called `rabbits` (in the `public` schema). In a real-world scenario, you will most likely want to install the trigger for a set of tables and optionally split the transaction log into multiple partitions.
+
+See `Carbonite.Migrations` for more information on migrations.
 
 ```sh
 mix ecto.gen.migration InstallCarbonite
@@ -86,34 +104,95 @@ defmodule MyApp.Repo.Migrations.InstallCarbonite do
   use Ecto.Migration
 
   def up do
-    Carbonite.Migrations.install()
-    Carbonite.Migrations.install_trigger(:rabbits, excluded_columns: ["age"])
+    # Creates carbonite_default schema and tables.
+    Carbonite.Migrations.install_schema()
+
+    # For each table that you want to capture changes of, you need to install the trigger.
+    Carbonite.Migrations.install_trigger(:rabbits)
   end
 
   def down do
+    # Remove all triggers before dropping the schema.
     Carbonite.Migrations.drop_trigger(:rabbits)
-    execute("DROP SCHEMA carbonite_default;")
+
+    # Drop the schema & tables.
+    Carbonite.Migrations.drop_schema()
   end
 end
 ```
 
-## Usage
+#### Excluded Columns
 
-### With Ecto.Multi
+In case your table contains sensitive data or data otherwise undesirable for change capturing, you can exclude columns using the `excluded_columns` option. Excluded columns will not appear in the captured data. If an `UPDATE` on a table solely touches excluded columns, the entire `UPDATE` will not be recorded.
+
+```elixir
+Carbonite.Migrations.install_trigger(:rabbits, excluded_columns: ["age"])
+```
+
+If you forgot to exclude a column, you can reconfigure a trigger for a particular table using `configure_trigger/2`:
+
+```elixir
+# in another migration
+Carbonite.Migrations.configure_trigger(:rabbits, excluded_columns: ["age"])
+```
+
+#### Partitioning the Transaction Log
+
+Carbonite can install its tables into multiple database schemas using the `prefix` option. You can use this feature to "partition" your captured data.
+
+```elixir
+Carbonite.Migrations.install_schema(prefix: "carbonite_lagomorpha")
+Carbonite.Migrations.install_trigger(:rabbits, carbonite_prefix: "carbonite_lagomorpha")
+```
+
+If desired, tables can participate in multiple partitions by adding multiple triggers on to them.
+
+Keep in mind that each partition will need to be processed and purged separately, resulting in multiple streams of change data in your external storage.
+
+### Inserting a Transaction
+
+In your application logic, before modifying a versioned table like `rabbits`, you need to first create a `Carbonite.Transaction` record.
+
+#### With Ecto.Multi
+
+The easiest way to do so is using `Carbonite.insert/2` within an `Ecto.Multi` operation:
 
 ```elixir
 Ecto.Multi.new()
-|> Carbonite.insert("rabbit_inserted")
-|> Ecto.Multi.put(:params, %{name: "Jack", age: 99})
+|> Carbonite.insert(meta: %{type: "rabbit_inserted"})
 |> Ecto.Multi.insert(:rabbit, &MyApp.Rabbit.create_changeset(&1.params))
-|> MyApp.transaction()
+|> MyApp.Repo.transaction()
 ```
+
+As you can see, the `Carbonite.Transaction` is a great place to store metadata for the operation. A "transaction type" would be an obvious choice to categorize the transactions. A `user_id` would be a good candidate for an transaction log, as well.
+
+#### Building a changeset for manual insertion
+
+If you don't have the luxury of an `Ecto.Multi`, you can create a changeset for a `Carbonite.Transaction` using `Carbonite.transaction_changeset/1`:
+
+```elixir
+MyApp.Repo.transaction(fn ->
+  %{meta: %{type: "rabbit_inserted"}}
+  |> Carbonite.transaction_changeset()
+  |> MyApp.Repo.insert!()
+
+  # ...
+end)
+```
+
+### Setting metadata outside of the Transaction
+
+In case you do not have access to metadata you want to persist in the `Carbonite.Transaction` at the code site where you create it, you can use `Carbonite.put_meta/2` to store metadata in the _process dictionary_. This metadata is merged into the metadata given to `Carbonite.insert/2`.
+
+```elixir
+# e.g., in a controller or plug
+Carbonite.put_meta(:user_id, ...)
+```
+
+<!-- MDOC -->
 
 ## Roadmap
 
-### probably
-
-* `purge`: Function that evicts records from the DB to be sent to external storage (event store), to be executed in recurrent job
 * drop `Xid` postgrex type once postgrex has been released
 
 ### maybe

@@ -8,15 +8,15 @@ defmodule APITest do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Carbonite.TestRepo)
   end
 
-  describe "build/2" do
-    test "builds an Ecto.Changeset for a transaction" do
-      %Ecto.Changeset{} = changeset = Carbonite.build()
+  describe "transaction_changeset/2" do
+    test "transaction_changesets an Ecto.Changeset for a transaction" do
+      %Ecto.Changeset{} = changeset = Carbonite.transaction_changeset()
 
       assert changeset.changes.meta == %{}
     end
 
     test "allows setting metadata" do
-      %Ecto.Changeset{} = changeset = Carbonite.build(meta: %{foo: 1})
+      %Ecto.Changeset{} = changeset = Carbonite.transaction_changeset(meta: %{foo: 1})
 
       assert changeset.changes.meta == %{foo: 1}
     end
@@ -24,7 +24,7 @@ defmodule APITest do
     test "merges metadata from process dictionary" do
       Carbonite.put_meta(:foo, 1)
       Carbonite.put_meta(:bar, 1)
-      %Ecto.Changeset{} = changeset = Carbonite.build(meta: %{foo: 2})
+      %Ecto.Changeset{} = changeset = Carbonite.transaction_changeset(meta: %{foo: 2})
 
       assert changeset.changes.meta == %{foo: 2, bar: 1}
     end

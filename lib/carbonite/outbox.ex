@@ -6,12 +6,12 @@ defmodule Carbonite.Outbox do
   in order of insertion.
   """
 
+  import Carbonite, only: [default_prefix: 0]
   import Ecto.Changeset, only: [change: 2]
   import Ecto.Query, only: [from: 2]
   alias Carbonite.Transaction
   alias Ecto.Multi
 
-  @default_prefix Application.compile_env!(:carbonite, :default_prefix)
   @default_batch_size 20
   @default_min_age 300
 
@@ -47,7 +47,7 @@ defmodule Carbonite.Outbox do
     Multi.new()
     |> Multi.put(:batch_size, Keyword.get(opts, :batch_size, @default_batch_size))
     |> Multi.put(:min_age, Keyword.get(opts, :min_age, @default_min_age))
-    |> Multi.put(:prefix, Keyword.get(opts, :prefix, @default_prefix))
+    |> Multi.put(:prefix, Keyword.get(opts, :prefix, default_prefix()))
     |> Multi.put(:process_fun, process_fun)
     |> Multi.run(:advisory_xact_lock, &acquire_advisory_xact_lock/2)
     |> Multi.run(:batch, &load_batch/2)
@@ -83,6 +83,28 @@ defmodule Carbonite.Outbox do
       |> Multi.update("tx-updated:#{id}", fn state ->
         change(Map.fetch!(state, "tx-loaded:#{id}"), %{processed_at: DateTime.utc_now()})
       end)
+    end)
+  end
+
+  @type purge_option :: {:prefix, binary()}
+
+  @doc """
+  Builds an `Ecto.Multi` that can be used to delete `Carbonite.Transaction` records and their
+  associated `Carbonite.Change` rows from the database once they have been successfully processed
+  using `process/2`.
+
+  ## Options
+
+  * `prefix` is the Carbonite schema, defaults to `"carbonite_default"`
+  """
+  @spec purge() :: Ecto.Multi.t()
+  @spec purge([purge_option()]) :: Ecto.Multi.t()
+  def purge(opts \\ []) do
+    Multi.new()
+    |> Multi.put(:prefix, Keyword.get(opts, :prefix, default_prefix()))
+    |> Multi.run(:purged, fn repo, %{prefix: prefix} ->
+      from(t in Transaction, where: not is_nil(t.processed_at))
+      |> repo.delete_all(prefix: prefix)
     end)
   end
 end

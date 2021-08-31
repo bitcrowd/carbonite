@@ -2,30 +2,26 @@
 
 defmodule Carbonite.Migrations do
   @moduledoc """
-  Functions to setup Carbonite audit trails in your migrations.
+  Functions to setup Carbonite transaction logs in your migrations.
   """
 
   use Ecto.Migration
-
-  @default_prefix Application.compile_env!(:carbonite, :default_prefix)
-  @default_table_prefix "public"
+  import Carbonite, only: [default_prefix: 0]
 
   @type carbonite_option :: {:prefix, String.t()}
-  @type trigger_option :: {:table_prefix, String.t()} | {:carbonite_prefix, String.t()}
-  @type trigger_config_option :: {:excluded_columns, [String.t()]}
   @type table_name :: String.t()
 
   @doc """
-  Install a Carbonite audit trail.
+  Install a Carbonite transaction logs.
 
   ## Options
 
-  * `prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
+  * `prefix` defines the transaction log's schema, defaults to `"carbonite_default"`
   """
-  @spec install() :: :ok
-  @spec install([carbonite_option()]) :: :ok
-  def install(opts \\ []) when is_list(opts) do
-    prefix = Keyword.get(opts, :prefix, @default_prefix)
+  @spec install_schema() :: :ok
+  @spec install_schema([carbonite_option()]) :: :ok
+  def install_schema(opts \\ []) when is_list(opts) do
+    prefix = Keyword.get(opts, :prefix, default_prefix())
 
     # ---------------- Schema --------------------
 
@@ -176,19 +172,39 @@ defmodule Carbonite.Migrations do
   end
 
   @doc """
+  Drops a Carbonite transaction log from the database.
+
+  ## Options
+
+  * `prefix` defines the transaction log's schema, defaults to `"carbonite_default"`
+  """
+  @spec drop_schema() :: :ok
+  @spec drop_schema([carbonite_option()]) :: :ok
+  def drop_schema(opts \\ []) when is_list(opts) do
+    prefix = Keyword.get(opts, :prefix, default_prefix())
+
+    execute("DROP SCHEMA #{prefix};")
+  end
+
+  @default_table_prefix "public"
+
+  @type trigger_option :: {:table_prefix, String.t()} | {:carbonite_prefix, String.t()}
+  @type trigger_config_option :: {:excluded_columns, [String.t()]}
+
+  @doc """
   Installs a change capture trigger on a table.
 
   ## Options
 
   * `table_prefix` is the name of the schema the table lives in
-  * `carbonite_prefix` is the schema of the Carbonite audit trail, defaults to `"carbonite_default"`
+  * `carbonite_prefix` is the schema of the transaction log, defaults to `"carbonite_default"`
   * `excluded_columns` is a list of columns to exclude from change captures
   """
   @spec install_trigger(table_name()) :: :ok
   @spec install_trigger(table_name(), [trigger_option() | trigger_config_option()]) :: :ok
   def install_trigger(table_name, opts \\ []) do
     table_prefix = Keyword.get(opts, :table_prefix, @default_table_prefix)
-    carbonite_prefix = Keyword.get(opts, :carbonite_prefix, @default_prefix)
+    carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
     execute("""
     CREATE TRIGGER capture_changes_into_#{carbonite_prefix}_trigger
@@ -209,14 +225,14 @@ defmodule Carbonite.Migrations do
   ## Options
 
   * `table_prefix` is the name of the schema the table lives in
-  * `carbonite_prefix` is the schema of the Carbonite audit trail, defaults to `"carbonite_default"`
+  * `carbonite_prefix` is the schema of the transaction log, defaults to `"carbonite_default"`
   * `excluded_columns` is a list of columns to exclude from change captures
   """
   @spec configure_trigger(table_name()) :: :ok
   @spec configure_trigger(table_name(), [trigger_option() | trigger_config_option()]) :: :ok
   def configure_trigger(table_name, opts \\ []) do
     table_prefix = Keyword.get(opts, :table_prefix, @default_table_prefix)
-    carbonite_prefix = Keyword.get(opts, :carbonite_prefix, @default_prefix)
+    carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
     excluded_columns =
       opts
@@ -244,13 +260,13 @@ defmodule Carbonite.Migrations do
   ## Options
 
   * `table_prefix` is the name of the schema the table lives in
-  * `carbonite_prefix` is the schema of the Carbonite audit trail, defaults to `"carbonite_default"`
+  * `carbonite_prefix` is the schema of the transaction log, defaults to `"carbonite_default"`
   """
   @spec drop_trigger(table_name()) :: :ok
   @spec drop_trigger(table_name(), [trigger_option()]) :: :ok
   def drop_trigger(table_name, opts \\ []) do
     table_prefix = Keyword.get(opts, :table_prefix, @default_table_prefix)
-    carbonite_prefix = Keyword.get(opts, :carbonite_prefix, @default_prefix)
+    carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
     """
     DROP TRIGGER capture_changes_into_#{carbonite_prefix}_trigger

@@ -2,8 +2,6 @@
 
 import Config
 
-config :carbonite, default_prefix: "carbonite_default"
-
 if config_env() in [:dev, :test] do
   config :carbonite, Carbonite.TestRepo,
     database: "carbonite_#{config_env()}",

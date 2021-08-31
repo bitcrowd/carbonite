@@ -1,35 +1,38 @@
 # SPDX-License-Identifier: Apache-2.0
 
 defmodule Carbonite do
-  @moduledoc """
-  TODO
-  """
+  @readme Path.join([__DIR__, "../README.md"])
+  @external_resource @readme
+
+  @moduledoc @readme
+             |> File.read!()
+             |> String.split("<!-- MDOC -->")
+             |> Enum.fetch!(1)
+
+  @moduledoc since: "0.1.0"
 
   alias Carbonite.Transaction
   alias Ecto.Multi
 
-  @default_prefix Application.compile_env!(:carbonite, :default_prefix)
-  @meta_pdict_key :carbonite_meta
-
   @type meta :: map()
-
   @type build_option :: {:meta, meta()}
-  @type insert_option :: {:prefix, binary()} | build_option()
 
   @doc """
   Builds a changeset for a new `Carbonite.Transaction`.
   """
-  @spec build() :: Ecto.Changeset.t()
-  @spec build([build_option()]) :: Ecto.Changeset.t()
-  def build(opts \\ []) do
+  @spec transaction_changeset() :: Ecto.Changeset.t()
+  @spec transaction_changeset([build_option()]) :: Ecto.Changeset.t()
+  def transaction_changeset(opts \\ []) do
     meta = Keyword.get(opts, :meta, %{})
     meta = Map.merge(current_meta(), meta)
 
     Ecto.Changeset.cast(%Transaction{}, %{meta: meta}, [:meta])
   end
 
+  @type insert_option :: {:prefix, binary()} | build_option()
+
   @doc """
-  TODO
+  Adds an insert operation for a `Carbonite.Transaction` to an `Ecto.Multi`.
   """
   @spec insert(Multi.t()) :: Multi.t()
   @spec insert(Multi.t(), [insert_option()]) :: Multi.t()
@@ -37,16 +40,18 @@ defmodule Carbonite do
     insert_opts =
       opts
       |> Keyword.take([:prefix])
-      |> Keyword.put_new(:prefix, @default_prefix)
+      |> Keyword.put_new(:prefix, default_prefix())
       |> Keyword.put_new(:returning, [:id])
 
     Multi.insert(
       multi,
       :carbonite_transaction,
-      fn _state -> build(opts) end,
+      fn _state -> transaction_changeset(opts) end,
       insert_opts
     )
   end
+
+  @meta_pdict_key :carbonite_meta
 
   @doc """
   Stores a piece of metadata in the process dictionary.
@@ -70,4 +75,8 @@ defmodule Carbonite do
   def current_meta do
     Process.get(@meta_pdict_key) || %{}
   end
+
+  @doc false
+  @spec default_prefix() :: binary()
+  def default_prefix, do: "carbonite_default"
 end
