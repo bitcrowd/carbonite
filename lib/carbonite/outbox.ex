@@ -9,6 +9,7 @@ defmodule Carbonite.Outbox do
   import Carbonite, only: [default_prefix: 0]
   import Ecto.Changeset, only: [change: 2]
   import Ecto.Query, only: [from: 2]
+  import Ecto.Adapters.SQL, only: [query!: 3]
   alias Carbonite.Transaction
   alias Ecto.Multi
 
@@ -57,7 +58,7 @@ defmodule Carbonite.Outbox do
   defp acquire_advisory_xact_lock(repo, %{prefix: prefix}) do
     <<key::signed-integer-64, _rest::binary>> = :crypto.hash(:sha, to_string(prefix))
 
-    {:ok, Ecto.Adapters.SQL.query!(repo, "SELECT pg_advisory_xact_lock($1);", [key])}
+    {:ok, query!(repo, "SELECT pg_advisory_xact_lock($1);", [key])}
   end
 
   defp load_batch(repo, %{batch_size: batch_size, min_age: min_age, prefix: prefix}) do

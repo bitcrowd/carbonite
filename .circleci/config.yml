@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: Apache-2.0
+
+version: 2
+jobs:
+  build:
+    parallelism: 1
+    docker:
+      - image: cimg/elixir:1.12.2
+        environment:
+          MIX_ENV: test
+      - image: circleci/postgres:13.4-ram
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: carbonite_test
+    working_directory: ~/app
+    steps:
+      - checkout
+      - run: mix local.hex --force
+      - run: mix local.rebar --force
+      - restore_cache:
+          keys:
+            - v2-mix-cache-{{ .Branch }}-{{ checksum "mix.lock" }}
+            - v2-mix-cache-{{ .Branch }}
+            - v2-mix-cache
+      - restore_cache:
+          keys:
+            - v2-build-cache-{{ .Branch }}
+            - v2-build-cache
+      - restore_cache:
+          keys:
+            - v2-plt-cache-{{ .Branch }}-{{ checksum "mix.lock" }}
+            - v2-plt-cache-{{ .Branch }}
+            - v2-plt-cache
+      - run: mix do deps.get, compile
+      - save_cache:
+          key: v2-mix-cache-{{ .Branch }}-{{ checksum "mix.lock" }}
+          paths: "deps"
+      - save_cache:
+          key: v2-build-cache-{{ .Branch }}
+          paths: "_build"
+      - save_cache:
+          key: v2-plt-cache-{{ .Branch }}-{{ checksum "mix.lock" }}
+          paths:
+            - _plts
+      - run: mix lint
+      - run:
+          name: Wait for DB
+          command: dockerize -wait tcp://localhost:5432 -timeout 1m
+      - run: mix do ecto.create, ecto.migrate
+      - run: mix test
+      - store_test_results:
+          path: /_build/test/lib/carbonite
+
