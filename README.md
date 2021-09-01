@@ -5,7 +5,7 @@
 [![Hex pm](http://img.shields.io/hexpm/v/carbonite.svg?style=flat)](https://hex.pm/packages/carbonite)
 [![Hex docs](http://img.shields.io/badge/hex.pm-docs-green.svg?style=flat)](https://hexdocs.pm/carbonite/Carbonite.html)
 [![License](https://img.shields.io/hexpm/l/carbonite?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
-[![CircleCI](https://circleci.com/gh/bitcrowd/carbonite.svg?style=shield)](https://circleci.com/gh/bitcrowd/carbonite)
+[![CircleCI](https://circleci.com/gh/bitcrowd/carbonite/tree/main.svg?style=shield)](https://circleci.com/gh/bitcrowd/carbonite/tree/main)
 
 Carbonite implements the [Change-Data-Capture](https://en.wikipedia.org/wiki/Change_data_capture) pattern on top of a PostgreSQL database and makes it easy to integrate into Elixir applications. It uses triggers to automatically record all changes applied to a database table in order to guarantee a complete audit trail of the contained data.
 
