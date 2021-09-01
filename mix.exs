@@ -14,6 +14,7 @@ defmodule Carbonite.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       aliases: aliases(),
+      preferred_cli_env: [lint: :test],
       dialyzer: [
         plt_add_apps: [:mix, :ex_unit],
         plt_core_path: "_plts",

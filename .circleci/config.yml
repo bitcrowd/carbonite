@@ -18,6 +18,7 @@ jobs:
       - checkout
       - run: mix local.hex --force
       - run: mix local.rebar --force
+
       - restore_cache:
           keys:
             - v2-mix-cache-{{ .Branch }}-{{ checksum "mix.lock" }}
@@ -27,11 +28,6 @@ jobs:
           keys:
             - v2-build-cache-{{ .Branch }}
             - v2-build-cache
-      - restore_cache:
-          keys:
-            - v2-plt-cache-{{ .Branch }}-{{ checksum "mix.lock" }}
-            - v2-plt-cache-{{ .Branch }}
-            - v2-plt-cache
       - run: mix do deps.get, compile
       - save_cache:
           key: v2-mix-cache-{{ .Branch }}-{{ checksum "mix.lock" }}
@@ -39,11 +35,17 @@ jobs:
       - save_cache:
           key: v2-build-cache-{{ .Branch }}
           paths: "_build"
+
+      - restore_cache:
+          keys:
+            - v2-plt-cache-{{ .Branch }}-{{ checksum "mix.lock" }}
+            - v2-plt-cache-{{ .Branch }}
+            - v2-plt-cache
+      - run: mix lint
       - save_cache:
           key: v2-plt-cache-{{ .Branch }}-{{ checksum "mix.lock" }}
-          paths:
-            - _plts
-      - run: mix lint
+          paths: "_plts"
+
       - run:
           name: Wait for DB
           command: dockerize -wait tcp://localhost:5432 -timeout 1m
