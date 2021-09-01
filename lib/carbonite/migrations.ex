@@ -12,7 +12,7 @@ defmodule Carbonite.Migrations do
   @type table_name :: String.t()
 
   @doc """
-  Install a Carbonite transaction logs.
+  Installs a Carbonite transaction log.
 
   ## Options
 
@@ -172,7 +172,7 @@ defmodule Carbonite.Migrations do
   end
 
   @doc """
-  Drops a Carbonite transaction log from the database.
+  Removes a Carbonite transaction log from the database.
 
   ## Options
 
@@ -277,7 +277,7 @@ defmodule Carbonite.Migrations do
     :ok
   end
 
-  # Removes surrounding and consecutive whitespace from SQL to improve readability in logs.
+  # Removes surrounding and consecutive whitespace from SQL to improve readability in console.
   defp squish_and_execute(statement) do
     statement
     |> String.replace(~r/[[:space:]]+/, " ")
