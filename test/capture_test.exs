@@ -2,33 +2,33 @@
 
 defmodule CaptureTest do
   use ExUnit.Case, async: true
-  import Carbonite.TestRepo, only: [transaction: 1]
+  import Ecto.Adapters.SQL, only: [query!: 2]
+  alias Carbonite.TestRepo
+  alias Ecto.Adapters.SQL.Sandbox
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Carbonite.TestRepo)
+    :ok = Sandbox.checkout(TestRepo)
   end
 
-  defp execute(statement) do
-    Ecto.Adapters.SQL.query!(Carbonite.TestRepo, statement)
-  end
+  defp query!(statement), do: query!(TestRepo, statement)
 
   defp insert_transaction do
-    execute("INSERT INTO carbonite_default.transactions (inserted_at) VALUES (NOW());")
+    query!("INSERT INTO carbonite_default.transactions (inserted_at) VALUES (NOW());")
   end
 
   defp insert_jack do
-    execute("INSERT INTO rabbits (name, age) VALUES ('Jack', 99);")
+    query!("INSERT INTO rabbits (name, age) VALUES ('Jack', 99);")
   end
 
   defp select_changes do
     "SELECT * FROM carbonite_default.changes;"
-    |> execute()
+    |> query!()
     |> postgrex_result_to_structs()
   end
 
   defp select_rabbits do
     "SELECT * FROM public.rabbits;"
-    |> execute()
+    |> query!()
     |> postgrex_result_to_structs()
   end
 
@@ -42,7 +42,7 @@ defmodule CaptureTest do
 
   describe "change capture trigger" do
     test "INSERTs on tables are tracked as changes" do
-      transaction(fn ->
+      TestRepo.transaction(fn ->
         insert_transaction()
         insert_jack()
       end)
@@ -61,10 +61,10 @@ defmodule CaptureTest do
     end
 
     test "UPDATEs on tables are tracked as changes" do
-      transaction(fn ->
+      TestRepo.transaction(fn ->
         insert_transaction()
         insert_jack()
-        execute("UPDATE rabbits SET name = 'Jane' WHERE name = 'Jack';")
+        query!("UPDATE rabbits SET name = 'Jane' WHERE name = 'Jack';")
       end)
 
       assert [
@@ -82,10 +82,10 @@ defmodule CaptureTest do
     end
 
     test "DELETEs on tables are tracked as changes" do
-      transaction(fn ->
+      TestRepo.transaction(fn ->
         insert_transaction()
         insert_jack()
-        execute("DELETE FROM rabbits WHERE name = 'Jack';")
+        query!("DELETE FROM rabbits WHERE name = 'Jack';")
       end)
 
       assert [
@@ -108,14 +108,14 @@ defmodule CaptureTest do
           "without prior INSERT into carbonite_default.transactions"
 
       assert_raise Postgrex.Error, msg, fn ->
-        transaction(&insert_jack/0)
+        TestRepo.transaction(&insert_jack/0)
       end
     end
   end
 
   describe "excluded columns" do
     test "excluded columns do not appear in captured data" do
-      transaction(fn ->
+      TestRepo.transaction(fn ->
         insert_transaction()
         insert_jack()
       end)
@@ -125,10 +125,10 @@ defmodule CaptureTest do
     end
 
     test "UPDATEs on only excluded fields are not tracked" do
-      transaction(fn ->
+      TestRepo.transaction(fn ->
         insert_transaction()
         insert_jack()
-        execute("UPDATE rabbits SET age = 100 WHERE name = 'Jack';")
+        query!("UPDATE rabbits SET age = 100 WHERE name = 'Jack';")
       end)
 
       assert [%{"age" => 100}] = select_rabbits()

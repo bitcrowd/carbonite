@@ -3,9 +3,10 @@
 defmodule APITest do
   use ExUnit.Case, async: true
   alias Carbonite.{Rabbit, TestRepo}
+  alias Ecto.Adapters.SQL.Sandbox
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Carbonite.TestRepo)
+    :ok = Sandbox.checkout(TestRepo)
   end
 
   describe "transaction_changeset/2" do

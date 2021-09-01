@@ -14,6 +14,11 @@ defmodule Carbonite.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       aliases: aliases(),
+      dialyzer: [
+        plt_add_apps: [:mix, :ex_unit],
+        plt_core_path: "_plts",
+        plt_file: {:no_warn, "_plts/carbonite.plt"}
+      ],
 
       # hex.pm
       package: package(),
@@ -54,11 +59,13 @@ defmodule Carbonite.MixProject do
   defp deps do
     [
       {:ecto_sql, "~> 3.6"},
-      {:jason, "~> 1.2"},
-      {:postgrex, ">= 0.0.0"},
+      {:postgrex, ">= 0.15.10"},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.24.1", only: [:dev], runtime: false}
+      {:ex_doc, "~> 0.24.1", only: [:dev], runtime: false},
+      # Jason is an optional dependency of Postgrex.
+      {:jason, "~> 1.2", only: [:dev, :test]},
+      {:junit_formatter, "~> 3.3", only: [:test]}
     ]
   end
 
