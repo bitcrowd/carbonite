@@ -13,6 +13,12 @@ It is centered around the idea that the database transaction is the natural audi
 
 For instance, when a payment for a pending invoice is received, your application might create a record in the `payments` table and update the `invoices` record. Both of these mutations are recorded as a `Carbonite.Change` and are associated to a single `Carbonite.Transaction` which allows to correlate these mutations and provides (at least) a `type` attribute, e.g. `payment_received`.
 
+---
+
+**NOTE**: This is work-in-progress and not yet ready to be used.
+
+---
+
 ## Features
 
 - Easy to setup in a migration
