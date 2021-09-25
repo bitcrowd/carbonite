@@ -8,8 +8,11 @@ defmodule Carbonite.Migrations do
   use Ecto.Migration
   import Carbonite, only: [default_prefix: 0]
 
-  @type carbonite_option :: {:prefix, String.t()}
-  @type table_name :: String.t()
+  @type prefix :: binary() | atom()
+  @type table_name :: binary() | atom()
+  @type column_name :: binary()
+
+  @type schema_option :: {:prefix, prefix()}
 
   @doc """
   Installs a Carbonite transaction log.
@@ -19,7 +22,7 @@ defmodule Carbonite.Migrations do
   * `prefix` defines the transaction log's schema, defaults to `"carbonite_default"`
   """
   @spec install_schema() :: :ok
-  @spec install_schema([carbonite_option()]) :: :ok
+  @spec install_schema([schema_option()]) :: :ok
   def install_schema(opts \\ []) when is_list(opts) do
     prefix = Keyword.get(opts, :prefix, default_prefix())
 
@@ -179,7 +182,7 @@ defmodule Carbonite.Migrations do
   * `prefix` defines the transaction log's schema, defaults to `"carbonite_default"`
   """
   @spec drop_schema() :: :ok
-  @spec drop_schema([carbonite_option()]) :: :ok
+  @spec drop_schema([schema_option()]) :: :ok
   def drop_schema(opts \\ []) when is_list(opts) do
     prefix = Keyword.get(opts, :prefix, default_prefix())
 
@@ -188,8 +191,8 @@ defmodule Carbonite.Migrations do
 
   @default_table_prefix "public"
 
-  @type trigger_option :: {:table_prefix, String.t()} | {:carbonite_prefix, String.t()}
-  @type trigger_config_option :: {:excluded_columns, [String.t()]}
+  @type trigger_option :: {:table_prefix, prefix()} | {:carbonite_prefix, prefix()}
+  @type trigger_config_option :: {:excluded_columns, [column_name()]}
 
   @doc """
   Installs a change capture trigger on a table.

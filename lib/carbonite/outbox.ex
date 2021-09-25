@@ -16,9 +16,14 @@ defmodule Carbonite.Outbox do
   @default_batch_size 20
   @default_min_age 300
 
+  @type prefix :: binary() | atom()
+
   @type process_fun :: (repo :: module(), Transaction.t() -> {:ok, any()} | {:error, any()})
+
   @type process_option ::
-          {:batch_size, non_neg_integer()} | {:min_age, non_neg_integer()} | {:prefix, String.t()}
+          {:batch_size, non_neg_integer()}
+          | {:min_age, non_neg_integer()}
+          | {:prefix, prefix()}
 
   @doc """
   Builds an `Ecto.Multi` that can be used to load `Carbonite.Transaction` records from database
@@ -87,7 +92,7 @@ defmodule Carbonite.Outbox do
     end)
   end
 
-  @type purge_option :: {:prefix, binary()}
+  @type purge_option :: {:prefix, prefix()}
 
   @doc """
   Builds an `Ecto.Multi` that can be used to delete `Carbonite.Transaction` records and their

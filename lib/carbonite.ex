@@ -14,7 +14,9 @@ defmodule Carbonite do
   alias Carbonite.Transaction
   alias Ecto.Multi
 
+  @type prefix :: binary() | map()
   @type meta :: map()
+
   @type build_option :: {:meta, meta()}
 
   @doc """
@@ -29,7 +31,7 @@ defmodule Carbonite do
     Ecto.Changeset.cast(%Transaction{}, %{meta: meta}, [:meta])
   end
 
-  @type insert_option :: {:prefix, binary()} | build_option()
+  @type insert_option :: {:prefix, prefix()} | build_option()
 
   @doc """
   Adds an insert operation for a `Carbonite.Transaction` to an `Ecto.Multi`.
