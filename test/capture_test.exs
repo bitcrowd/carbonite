@@ -160,6 +160,18 @@ defmodule CaptureTest do
         TestRepo.transaction(&insert_jack/0)
       end
     end
+
+    test "a (not quite as) friendly error is raised when transaction is inserted twice" do
+      TestRepo.transaction(fn ->
+        insert_transaction()
+
+        assert_raise Postgrex.Error,
+                     ~r/duplicate key value violates unique constraint "transactions_pkey"/,
+                     fn ->
+                       insert_transaction()
+                     end
+      end)
+    end
   end
 
   describe "excluded columns" do
