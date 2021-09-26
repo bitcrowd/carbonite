@@ -89,11 +89,13 @@ defmodule Carbonite.Migrations do
       add(:op, :"#{prefix}.change_op", null: false)
       add(:table_prefix, :string, null: false)
       add(:table_name, :string, null: false)
+      add(:table_pk, {:array, :string}, null: true)
       add(:old, :jsonb)
       add(:new, :jsonb)
     end
 
     create(index("changes", [:transaction_id], prefix: prefix))
+    create(index("changes", [:table_prefix, :table_name, :table_pk], prefix: prefix))
 
     # ---------------- Triggers ------------------
 
@@ -101,6 +103,7 @@ defmodule Carbonite.Migrations do
       add(:id, :bigserial, null: false, primary_key: true)
       add(:table_prefix, :string, null: false)
       add(:table_name, :string, null: false)
+      add(:primary_key_columns, {:array, :string}, null: false, default: [])
       add(:excluded_columns, {:array, :string}, null: false, default: [])
 
       timestamps()
@@ -110,7 +113,7 @@ defmodule Carbonite.Migrations do
       index("triggers", [:table_prefix, :table_name],
         name: "table_index",
         unique: true,
-        include: [:excluded_columns],
+        include: [:primary_key_columns, :excluded_columns],
         prefix: prefix
       )
     )
@@ -121,8 +124,12 @@ defmodule Carbonite.Migrations do
     CREATE FUNCTION #{prefix}.capture_changes() RETURNS TRIGGER AS
     $body$
     DECLARE
-      change_row #{prefix}.changes;
       trigger_row #{prefix}.triggers;
+      change_row #{prefix}.changes;
+      pk_source RECORD;
+      pk_col VARCHAR;
+      pk_col_val VARCHAR;
+      pk_col_val_arr VARCHAR[] := '{}';
     BEGIN
       /* load trigger config */
       SELECT *
@@ -137,9 +144,22 @@ defmodule Carbonite.Migrations do
         LOWER(TG_OP::TEXT),
         TG_TABLE_SCHEMA::TEXT,
         TG_TABLE_NAME::TEXT,
+        '{}',
         NULL,
         NULL
       );
+
+      /* build table_pk */
+      IF (TG_OP IN ('INSERT', 'UPDATE')) THEN
+        pk_source := NEW;
+      ELSIF (TG_OP = 'DELETE') THEN
+        pk_source := OLD;
+      END IF;
+
+      FOREACH pk_col IN ARRAY trigger_row.primary_key_columns LOOP
+        EXECUTE 'SELECT $1.' || pk_col || '::text' USING pk_source INTO pk_col_val;
+        change_row.table_pk := change_row.table_pk || pk_col_val;
+      END LOOP;
 
       /* fill in changed data */
       IF (TG_OP = 'UPDATE') THEN
@@ -192,7 +212,8 @@ defmodule Carbonite.Migrations do
   @default_table_prefix "public"
 
   @type trigger_option :: {:table_prefix, prefix()} | {:carbonite_prefix, prefix()}
-  @type trigger_config_option :: {:excluded_columns, [column_name()]}
+  @type trigger_config_option ::
+          {:primary_key_columns, [column_name()]} | {:excluded_columns, [column_name()]}
 
   @doc """
   Installs a change capture trigger on a table.
@@ -201,6 +222,8 @@ defmodule Carbonite.Migrations do
 
   * `table_prefix` is the name of the schema the table lives in
   * `carbonite_prefix` is the schema of the transaction log, defaults to `"carbonite_default"`
+  * `primary_key_columns` is a list of columns that form the primary key of the table
+                          (defaults to `["id"]`, set to `[]` or nil to disable)
   * `excluded_columns` is a list of columns to exclude from change captures
   """
   @spec install_trigger(table_name()) :: :ok
@@ -229,6 +252,7 @@ defmodule Carbonite.Migrations do
 
   * `table_prefix` is the name of the schema the table lives in
   * `carbonite_prefix` is the schema of the transaction log, defaults to `"carbonite_default"`
+  * `primary_key_columns` is a list of columns that together build the primary key of the table
   * `excluded_columns` is a list of columns to exclude from change captures
   """
   @spec configure_trigger(table_name()) :: :ok
@@ -237,20 +261,18 @@ defmodule Carbonite.Migrations do
     table_prefix = Keyword.get(opts, :table_prefix, @default_table_prefix)
     carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
-    excluded_columns =
-      opts
-      |> Keyword.get(:excluded_columns, [])
-      |> Enum.map(&"\"#{&1}\"")
-      |> Enum.join(",")
+    primary_key_columns = column_list(opts[:primary_key_columns])
+    excluded_columns = column_list(opts[:excluded_columns])
 
     """
     INSERT INTO #{carbonite_prefix}.triggers (
-      table_prefix, table_name, excluded_columns, inserted_at, updated_at
+      table_prefix, table_name, primary_key_columns, excluded_columns, inserted_at, updated_at
     ) VALUES (
-      '#{table_prefix}', '#{table_name}', '{#{excluded_columns}}', NOW(), NOW()
+      '#{table_prefix}', '#{table_name}', '#{primary_key_columns}', '#{excluded_columns}', NOW(), NOW()
     )
     ON CONFLICT (table_prefix, table_name) DO
     UPDATE SET
+      primary_key_columns = excluded.primary_key_columns,
       excluded_columns = excluded.excluded_columns,
       updated_at = excluded.updated_at;
     """
@@ -278,6 +300,16 @@ defmodule Carbonite.Migrations do
     |> squish_and_execute()
 
     :ok
+  end
+
+  # Joins a list of atoms/strings to a `{'foo', 'bar', ...}` SQL array expression.
+  defp column_list(nil), do: "{}"
+  defp column_list(value), do: "{#{do_column_list(value)}}"
+
+  defp do_column_list(value) do
+    value
+    |> Enum.map(&"\"#{&1}\"")
+    |> Enum.join(",")
   end
 
   # Removes surrounding and consecutive whitespace from SQL to improve readability in console.

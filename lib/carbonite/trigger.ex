@@ -14,6 +14,7 @@ defmodule Carbonite.Trigger do
           id: non_neg_integer(),
           table_name: String.t(),
           table_prefix: String.t(),
+          primary_key_columns: [String.t()],
           excluded_columns: [String.t()],
           inserted_at: DateTime.t(),
           updated_at: DateTime.t()
@@ -22,6 +23,7 @@ defmodule Carbonite.Trigger do
   schema "triggers" do
     field(:table_prefix, :string)
     field(:table_name, :string)
+    field(:primary_key_columns, {:array, :string}, default: [])
     field(:excluded_columns, {:array, :string}, default: [])
 
     timestamps()
