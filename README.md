@@ -59,25 +59,6 @@ def deps do
 end
 ```
 
-### Add Postgrex type for `xid8`
-
-To load PostgreSQL's `xid8` 64-bit type, we need to tell Postgrex to cast it to an Elixir integer.
-
-```elixir
-# lib/my_app/postgrex_types.ex
-
-Postgrex.Types.define(MyApp.PostgrexTypes, [Carbonite.Postgrex.Xid8], [])
-```
-
-```elixir
-# config/config.exs
-
-config :carbonite, MyApp.Repo,
-  types: MyApp.PostgrexTypes
-```
-
-Note that this will go away as soon as the next Postgrex version has been released.
-
 ## Usage
 
 <!-- MDOC -->
@@ -198,12 +179,3 @@ Carbonite.put_meta(:user_id, ...)
 ```
 
 <!-- MDOC -->
-
-## Roadmap
-
-* drop `Xid` postgrex type once postgrex has been released
-
-### maybe
-
-* table versioning: Optional version numbers for "main" tables (i.e. add a `version` field and a trigger `BEFORE UPDATE` that bumps it)
-* `checksum`: Function that fetches non-checksum'ed transactions from DB and builds a checksum chain across them, to be executed in recurrent job
