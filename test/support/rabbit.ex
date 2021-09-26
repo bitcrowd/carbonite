@@ -9,8 +9,6 @@ defmodule Carbonite.Rabbit do
   schema "rabbits" do
     field(:name, :string)
     field(:age, :integer)
-
-    field(:version, :integer)
   end
 
   def create_changeset(params) do
