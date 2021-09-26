@@ -5,6 +5,6 @@ defmodule Carbonite.TestRepo.Migrations.InstallCarbonite do
 
   def change do
     Carbonite.Migrations.install_schema()
-    Carbonite.Migrations.install_trigger(:rabbits, excluded_columns: ["age"])
+    Carbonite.Migrations.install_trigger(:rabbits, primary_key_columns: ["id"], excluded_columns: ["age"])
   end
 end

@@ -123,6 +123,12 @@ defmodule MyApp.Repo.Migrations.InstallCarbonite do
 end
 ```
 
+#### Primary Key Columns
+
+To speed up version lookups for a specific record, Carbonite can write its primary key to the `table_pk` column of the `changes` table. The table keeps an index on this column together with the table prefix and name.
+
+To use this feature, set the `primary_key_columns` option to the trigger (see `Carbonite.Migrations.install_trigger/2` and `Carbonite.Migrations.configure_trigger/2`). Since the `changes` table may keep versions of a multitude of different source tables, the `table_pk` column has type `VARCHAR` and primary keys are first cast to string. For compound primary keys, set the `primary_key_columns` option to an array. Each component of a compound primary key will be cast to string before the components are joined to a single string by `|`.
+
 #### Excluded Columns
 
 In case your table contains sensitive data or data otherwise undesirable for change capturing, you can exclude columns using the `excluded_columns` option. Excluded columns will not appear in the captured data. If an `UPDATE` on a table solely touches excluded columns, the entire `UPDATE` will not be recorded.

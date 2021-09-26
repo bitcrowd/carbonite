@@ -19,6 +19,7 @@ defmodule Carbonite.Change do
           op: :insert | :update | :delete,
           table_prefix: String.t(),
           table_name: String.t(),
+          table_pk: [String.t()],
           old: nil | map(),
           new: nil | map(),
           transaction: Ecto.Association.NotLoaded.t() | Carbonite.Transaction.t()
@@ -29,6 +30,7 @@ defmodule Carbonite.Change do
     field(:op, Ecto.Enum, values: [:insert, :update, :delete])
     field(:table_prefix, :string)
     field(:table_name, :string)
+    field(:table_pk, {:array, :string})
     field(:old, :map)
     field(:new, :map)
 

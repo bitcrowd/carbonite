@@ -27,9 +27,16 @@ defmodule CaptureTest do
   end
 
   defp select_rabbits do
-    "SELECT * FROM public.rabbits;"
+    "SELECT * FROM public.rabbits ORDER BY id DESC;"
     |> query!()
     |> postgrex_result_to_structs()
+  end
+
+  defp last_rabbit_id do
+    select_rabbits()
+    |> List.last()
+    |> Map.fetch!("id")
+    |> to_string()
   end
 
   defp postgrex_result_to_structs(%Postgrex.Result{columns: columns, rows: rows}) do
@@ -99,6 +106,48 @@ defmodule CaptureTest do
                  "old" => %{"id" => _, "name" => "Jack"},
                  "new" => nil
                }
+             ] = select_changes()
+    end
+
+    test "table primary key is written for INSERTs" do
+      TestRepo.transaction(fn ->
+        insert_transaction()
+        insert_jack()
+      end)
+
+      rabbit_id = last_rabbit_id()
+
+      assert [%{"table_pk" => [^rabbit_id]}] = select_changes()
+    end
+
+    test "table primary key is written for UPDATEs" do
+      TestRepo.transaction(fn ->
+        insert_transaction()
+        insert_jack()
+        query!("UPDATE rabbits SET name = 'Jane' WHERE name = 'Jack';")
+      end)
+
+      rabbit_id = last_rabbit_id()
+
+      assert [
+               %{"table_pk" => [^rabbit_id]},
+               %{"table_pk" => [^rabbit_id]}
+             ] = select_changes()
+    end
+
+    test "table primary key is written for DELETEs" do
+      {:ok, rabbit_id} =
+        TestRepo.transaction(fn ->
+          insert_transaction()
+          insert_jack()
+          rabbit_id = last_rabbit_id()
+          query!("DELETE FROM rabbits WHERE name = 'Jack';")
+          rabbit_id
+        end)
+
+      assert [
+               %{"table_pk" => [^rabbit_id]},
+               %{"table_pk" => [^rabbit_id]}
              ] = select_changes()
     end
 
