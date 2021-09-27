@@ -1,0 +1,17 @@
+* add better description
+* carbonite in public schema
+  - prefix tables with `carbonite_` again
+  - explain in docs that this is possible
+  - set default carbonite schema to public?
+* changes query (wip)
+  - join in transactions?
+* transactions query?
+* change capturing
+  - mention importance of order of primary key columns somewhere
+  - OR sort them on insert / query?
+  - switch from old/new fields to row/changed (array of column names) again
+  - add filtered columns
+* migrations
+  - generator instead of library?
+* ExMachina strategy for `insert_with_carbonite` :/
+* write tests for outbox
