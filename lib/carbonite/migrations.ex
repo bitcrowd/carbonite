@@ -90,8 +90,8 @@ defmodule Carbonite.Migrations do
       add(:table_prefix, :string, null: false)
       add(:table_name, :string, null: false)
       add(:table_pk, {:array, :string}, null: true)
-      add(:old, :jsonb)
-      add(:new, :jsonb)
+      add(:data, :jsonb, null: false)
+      add(:changed, {:array, :string}, null: false)
     end
 
     create(index("changes", [:transaction_id], prefix: prefix))
@@ -130,6 +130,7 @@ defmodule Carbonite.Migrations do
       pk_col VARCHAR;
       pk_col_val VARCHAR;
       pk_col_val_arr VARCHAR[] := '{}';
+      old_field RECORD;
     BEGIN
       /* load trigger config */
       SELECT *
@@ -146,7 +147,7 @@ defmodule Carbonite.Migrations do
         TG_TABLE_NAME::TEXT,
         '{}',
         NULL,
-        NULL
+        '{}'
       );
 
       /* build table_pk */
@@ -163,17 +164,22 @@ defmodule Carbonite.Migrations do
 
       /* fill in changed data */
       IF (TG_OP = 'UPDATE') THEN
-        change_row.old = to_jsonb(OLD.*) - trigger_row.excluded_columns;
-        change_row.new = to_jsonb(NEW.*) - trigger_row.excluded_columns;
+        change_row.data = to_jsonb(NEW.*) - trigger_row.excluded_columns;
 
-        IF change_row.old = change_row.new THEN
+        FOR old_field IN SELECT * FROM jsonb_each(to_jsonb(OLD.*) - trigger_row.excluded_columns) LOOP
+          IF NOT change_row.data @> jsonb_build_object(old_field.key, old_field.value)
+             THEN change_row.changed := change_row.changed || old_field.key::VARCHAR;
+          END IF;
+        END LOOP;
+
+        IF change_row.changed = '{}' THEN
           /* All changed fields are ignored. Skip this update. */
           RETURN NULL;
         END IF;
       ELSIF (TG_OP = 'DELETE') THEN
-        change_row.old = to_jsonb(OLD.*) - trigger_row.excluded_columns;
+        change_row.data = to_jsonb(OLD.*) - trigger_row.excluded_columns;
       ELSIF (TG_OP = 'INSERT') THEN
-        change_row.new = to_jsonb(NEW.*) - trigger_row.excluded_columns;
+        change_row.data = to_jsonb(NEW.*) - trigger_row.excluded_columns;
       END IF;
 
       /* insert, fail gracefully unless transaction record present */
