@@ -302,12 +302,15 @@ defmodule Carbonite.Migrations do
     :ok
   end
 
-  # Joins a list of atoms/strings to a `{'foo', 'bar', ...}` SQL array expression.
+  # Joins a list of atoms/strings to a `{'bar', 'foo', ...}` (ordered) SQL array expression.
   defp column_list(nil), do: "{}"
   defp column_list(value), do: "{#{do_column_list(value)}}"
 
   defp do_column_list(value) do
     value
+    |> List.wrap()
+    |> Enum.map(&to_string/1)
+    |> Enum.sort()
     |> Enum.map(&"\"#{&1}\"")
     |> Enum.join(",")
   end

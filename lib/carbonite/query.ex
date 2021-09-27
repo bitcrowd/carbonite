@@ -88,7 +88,7 @@ defmodule Carbonite.Query do
     table_name = schema.__schema__(:source)
 
     table_pk =
-      for pk_col <- schema.__schema__(:primary_key) do
+      for pk_col <- Enum.sort(schema.__schema__(:primary_key)) do
         record |> Map.fetch!(pk_col) |> to_string()
       end
 
