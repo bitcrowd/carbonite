@@ -7,8 +7,6 @@
   - join in transactions?
 * transactions query?
 * change capturing
-  - mention importance of order of primary key columns somewhere
-  - OR sort them on insert / query?
   - switch from old/new fields to row/changed (array of column names) again
   - add filtered columns
 * migrations
