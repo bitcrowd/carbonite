@@ -1,11 +1,25 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 
-# Carbonite
+<p align="center">
+  <a href="https://github.com/bitcrowd/carbonite">
+    <img alt="carbonite" src="https://raw.githubusercontent.com/bitcrowd/carbonite/assets/logo/rgb_stacked.png">
+  </a>
+</p>
 
-[![Hex pm](http://img.shields.io/hexpm/v/carbonite.svg?style=flat)](https://hex.pm/packages/carbonite)
-[![Hex docs](http://img.shields.io/badge/hex.pm-docs-green.svg?style=flat)](https://hexdocs.pm/carbonite/Carbonite.html)
-[![License](https://img.shields.io/hexpm/l/carbonite?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
-[![CircleCI](https://circleci.com/gh/bitcrowd/carbonite.svg?style=shield)](https://circleci.com/gh/bitcrowd/carbonite)
+<p align="center">
+  <a href="https://hex.pm/packages/carbonite">
+    <img alt="Hex pm" src="http://img.shields.io/hexpm/v/carbonite.svg?style=flat">
+  </a>
+  <a href="https://hexdocs.pm/carbonite/Carbonite.html">
+    <img alt="Hexdocs" src="http://img.shields.io/badge/hex.pm-docs-green.svg?style=flat">
+  </a>
+  <a href="https://www.apache.org/licenses/LICENSE-2.0">
+    <img alt="License" src="https://img.shields.io/hexpm/l/carbonite?style=flat">
+  </a>
+  <a href="https://circleci.com/gh/bitcrowd/carbonite">
+    <img alt="CircleCI" src="https://circleci.com/gh/bitcrowd/carbonite.svg?style=shield">
+  </a>
+</p>
 
 Carbonite implements the [Change-Data-Capture](https://en.wikipedia.org/wiki/Change_data_capture) pattern on top of a PostgreSQL database and makes it easy to integrate into Elixir applications. It uses triggers to automatically record all changes applied to a database table in order to guarantee a complete audit trail of the contained data.
 
