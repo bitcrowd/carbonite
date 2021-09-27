@@ -61,8 +61,8 @@ defmodule CaptureTest do
                  "table_prefix" => "public",
                  "table_name" => "rabbits",
                  "op" => "insert",
-                 "old" => nil,
-                 "new" => %{"id" => _, "name" => "Jack"}
+                 "changed" => [],
+                 "data" => %{"id" => _, "name" => "Jack"}
                }
              ] = select_changes()
     end
@@ -77,13 +77,13 @@ defmodule CaptureTest do
       assert [
                %{
                  "op" => "insert",
-                 "old" => nil,
-                 "new" => %{"id" => _, "name" => "Jack"}
+                 "changed" => [],
+                 "data" => %{"id" => _, "name" => "Jack"}
                },
                %{
                  "op" => "update",
-                 "old" => %{"id" => _, "name" => "Jack"},
-                 "new" => %{"id" => _, "name" => "Jane"}
+                 "changed" => ["name"],
+                 "data" => %{"id" => _, "name" => "Jane"}
                }
              ] = select_changes()
     end
@@ -98,13 +98,13 @@ defmodule CaptureTest do
       assert [
                %{
                  "op" => "insert",
-                 "old" => nil,
-                 "new" => %{"id" => _, "name" => "Jack"}
+                 "changed" => [],
+                 "data" => %{"id" => _, "name" => "Jack"}
                },
                %{
                  "op" => "delete",
-                 "old" => %{"id" => _, "name" => "Jack"},
-                 "new" => nil
+                 "changed" => [],
+                 "data" => %{"id" => _, "name" => "Jack"}
                }
              ] = select_changes()
     end
@@ -181,8 +181,8 @@ defmodule CaptureTest do
         insert_jack()
       end)
 
-      assert [%{"new" => new}] = select_changes()
-      refute Map.has_key?(new, "age")
+      assert [%{"data" => data}] = select_changes()
+      refute Map.has_key?(data, "age")
     end
 
     test "UPDATEs on only excluded fields are not tracked" do

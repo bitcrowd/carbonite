@@ -65,7 +65,7 @@ defmodule QuertTest do
     setup [:insert_rabbits]
 
     test "queries changes for a given record given its struct", %{rabbit: rabbit} do
-      assert [%Change{new: %{"name" => "Jack"}}] = Query.changes(rabbit) |> TestRepo.all()
+      assert [%Change{data: %{"name" => "Jack"}}] = Query.changes(rabbit) |> TestRepo.all()
     end
 
     test "can preload the transaction", %{rabbit: rabbit} do

@@ -4,9 +4,13 @@ defmodule Carbonite.Change do
   @moduledoc """
   A `Carbonite.Change` records a mutation on a database table.
 
-  `INSERT` statements lead to a `Change` where the `new` field contains the inserted row as a
-  JSON object while the `old` field is `nil`. `UPDATE` statements contain both `old` and `new`
-  fields, and `DELETE` statements only contain data in `old`.
+  `INSERT` statements lead to a `Change` where the `data` field contains the inserted row as a
+  JSON object while the `changed` field is an empty list.
+
+  `UPDATE` statements contain the updated record in `data` while the `changed` field is a list
+  of attributes that have changed.
+
+  `DELETE` statements have the delete data in `data` while `changed` is again an empty list.
   """
 
   use Ecto.Schema
@@ -20,8 +24,8 @@ defmodule Carbonite.Change do
           table_prefix: String.t(),
           table_name: String.t(),
           table_pk: [String.t()],
-          old: nil | map(),
-          new: nil | map(),
+          data: nil | map(),
+          changed: [String.t()],
           transaction: Ecto.Association.NotLoaded.t() | Carbonite.Transaction.t()
         }
 
@@ -31,8 +35,8 @@ defmodule Carbonite.Change do
     field(:table_prefix, :string)
     field(:table_name, :string)
     field(:table_pk, {:array, :string})
-    field(:old, :map)
-    field(:new, :map)
+    field(:data, :map)
+    field(:changed, {:array, :string})
 
     belongs_to(:transaction, Carbonite.Transaction)
   end
