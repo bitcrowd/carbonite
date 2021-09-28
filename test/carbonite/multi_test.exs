@@ -3,7 +3,7 @@
 defmodule Carbonite.MultiTest do
   use ExUnit.Case, async: true
   import Carbonite.Multi
-  alias Carbonite.{Rabbit, TestRepo}
+  alias Carbonite.{Rabbit, TestRepo, Transaction}
   alias Ecto.Adapters.SQL.Sandbox
 
   setup do
@@ -47,6 +47,19 @@ defmodule Carbonite.MultiTest do
         |> TestRepo.transaction()
 
       assert tx.meta == %{foo: 1}
+    end
+  end
+
+  describe "override_mode/2" do
+    test "enables override mode for the current transaction" do
+      {:ok, _result} =
+        Ecto.Multi.new()
+        |> override_mode()
+        |> Ecto.Multi.put(:params, %{name: "Jack", age: 99})
+        |> Ecto.Multi.insert(:rabbit, &Rabbit.create_changeset(&1.params))
+        |> TestRepo.transaction()
+
+      assert TestRepo.count(Transaction) == 0
     end
   end
 
