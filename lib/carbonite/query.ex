@@ -5,6 +5,8 @@ defmodule Carbonite.Query do
   This module provides query functions for retrieving transaction logs from the database.
   """
 
+  @moduledoc since: "0.1.1"
+
   import Ecto.Query, only: [from: 2, preload: 2, put_query_prefix: 2]
   import Carbonite, only: [default_prefix: 0]
   alias Carbonite.{Change, Transaction}
@@ -53,6 +55,7 @@ defmodule Carbonite.Query do
   * `carbonite_prefix` defines the transaction log's schema, defaults to `"carbonite_default"`
   * `preload` can be used to preload the changes
   """
+  @doc since: "0.1.1"
   @spec current_transaction() :: Ecto.Query.t()
   @spec current_transaction([current_transaction_option()]) :: Ecto.Query.t()
   def current_transaction(opts \\ []) do
@@ -79,6 +82,7 @@ defmodule Carbonite.Query do
   * `carbonite_prefix` defines the transaction log's schema, defaults to `"carbonite_default"`
   * `preload` can be used to preload the transaction
   """
+  @doc since: "0.1.1"
   @spec changes(Ecto.Schema.t()) :: Ecto.Query.t()
   @spec changes(Ecto.Schema.t(), [changes_option()]) :: Ecto.Query.t()
   def changes(%schema{__meta__: %Ecto.Schema.Metadata{}} = record, opts \\ []) do

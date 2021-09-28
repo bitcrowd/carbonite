@@ -5,6 +5,8 @@ defmodule Carbonite.Migrations do
   Functions to setup Carbonite transaction logs in your migrations.
   """
 
+  @moduledoc since: "0.1.0"
+
   use Ecto.Migration
   import Carbonite, only: [default_prefix: 0]
 
@@ -103,8 +105,8 @@ defmodule Carbonite.Migrations do
       add(:id, :bigserial, null: false, primary_key: true)
       add(:table_prefix, :string, null: false)
       add(:table_name, :string, null: false)
-      add(:primary_key_columns, {:array, :string}, null: false, default: [])
-      add(:excluded_columns, {:array, :string}, null: false, default: [])
+      add(:primary_key_columns, {:array, :string}, null: false)
+      add(:excluded_columns, {:array, :string}, null: false)
 
       timestamps()
     end
@@ -145,22 +147,26 @@ defmodule Carbonite.Migrations do
         LOWER(TG_OP::TEXT),
         TG_TABLE_SCHEMA::TEXT,
         TG_TABLE_NAME::TEXT,
-        '{}',
+        NULL,
         NULL,
         '{}'
       );
 
       /* build table_pk */
-      IF (TG_OP IN ('INSERT', 'UPDATE')) THEN
-        pk_source := NEW;
-      ELSIF (TG_OP = 'DELETE') THEN
-        pk_source := OLD;
-      END IF;
+      IF trigger_row.primary_key_columns != '{}' THEN
+        IF (TG_OP IN ('INSERT', 'UPDATE')) THEN
+          pk_source := NEW;
+        ELSIF (TG_OP = 'DELETE') THEN
+          pk_source := OLD;
+        END IF;
 
-      FOREACH pk_col IN ARRAY trigger_row.primary_key_columns LOOP
-        EXECUTE 'SELECT $1.' || pk_col || '::text' USING pk_source INTO pk_col_val;
-        change_row.table_pk := change_row.table_pk || pk_col_val;
-      END LOOP;
+        change_row.table_pk := '{}';
+
+        FOREACH pk_col IN ARRAY trigger_row.primary_key_columns LOOP
+          EXECUTE 'SELECT $1.' || pk_col || '::text' USING pk_source INTO pk_col_val;
+          change_row.table_pk := change_row.table_pk || pk_col_val;
+        END LOOP;
+      END IF;
 
       /* fill in changed data */
       IF (TG_OP = 'UPDATE') THEN
@@ -229,7 +235,7 @@ defmodule Carbonite.Migrations do
   * `table_prefix` is the name of the schema the table lives in
   * `carbonite_prefix` is the schema of the transaction log, defaults to `"carbonite_default"`
   * `primary_key_columns` is a list of columns that form the primary key of the table
-                          (defaults to `["id"]`, set to `[]` or nil to disable)
+                          (defaults to `["id"]`, set to `[]` to disable)
   * `excluded_columns` is a list of columns to exclude from change captures
   """
   @spec install_trigger(table_name()) :: :ok
@@ -258,7 +264,8 @@ defmodule Carbonite.Migrations do
 
   * `table_prefix` is the name of the schema the table lives in
   * `carbonite_prefix` is the schema of the transaction log, defaults to `"carbonite_default"`
-  * `primary_key_columns` is a list of columns that together build the primary key of the table
+  * `primary_key_columns` is a list of columns that form the primary key of the table
+                          (defaults to `["id"]`, set to `[]` to disable)
   * `excluded_columns` is a list of columns to exclude from change captures
   """
   @spec configure_trigger(table_name()) :: :ok
@@ -267,8 +274,8 @@ defmodule Carbonite.Migrations do
     table_prefix = Keyword.get(opts, :table_prefix, @default_table_prefix)
     carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
-    primary_key_columns = column_list(opts[:primary_key_columns])
-    excluded_columns = column_list(opts[:excluded_columns])
+    primary_key_columns = Keyword.get(opts, :primary_key_columns, ["id"]) |> column_list()
+    excluded_columns = Keyword.get(opts, :excluded_columns) |> column_list()
 
     """
     INSERT INTO #{carbonite_prefix}.triggers (

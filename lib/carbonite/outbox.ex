@@ -6,6 +6,8 @@ defmodule Carbonite.Outbox do
   in order of insertion.
   """
 
+  @moduledoc since: "0.1.0"
+
   import Carbonite, only: [default_prefix: 0]
   import Ecto.Changeset, only: [change: 2]
   import Ecto.Query, only: [from: 2]

@@ -120,9 +120,22 @@ end
 
 #### Primary Key Columns
 
-To speed up version lookups for a specific record, Carbonite can write its primary key to the `table_pk` column of the `changes` table. The table keeps an index on this column together with the table prefix and name.
+To speed up version lookups for a specific record, Carbonite copies its primary key(s) to the `table_pk` column of the `changes` table. The table keeps an index on this column together with the table prefix and name.
 
-To use this feature, set the `primary_key_columns` option to the trigger (see `Carbonite.Migrations.install_trigger/2` and `Carbonite.Migrations.configure_trigger/2`). Since the `changes` table may keep versions of a multitude of different source tables, the `table_pk` column has type `VARCHAR` and primary keys are first cast to string. For compound primary keys, set the `primary_key_columns` option to an array. Each component of a compound primary key will be cast to string before the components are joined to a single string by `|`.
+By default, Carbonite will try to copy the `:id` column of the source table. If your table does not have a primary key, has a primary key with a different name, or has a composite primary key, you can override this using the `primary_key_columns` option of `Carbonite.Migrations.install_trigger/2` and `Carbonite.Migrations.configure_trigger/2`.
+
+```elixir
+# Disable PK copying
+Carbonite.Migrations.install_trigger(:rabbits, primary_key_columns: [])
+
+# Different name
+Carbonite.Migrations.install_trigger(:rabbits, primary_key_columns: ["identifier"])
+
+# Composite PK
+Carbonite.Migrations.install_trigger(:rabbits, primary_key_columns: ["house", "apartment_no"])
+```
+
+Since the `changes` table keeps versions of a multitude of different source tables, the `table_pk` column has type `VARCHAR` and primary keys are first cast to string. For composite primary keys, set the `primary_key_columns` option to an array as shown above. Each component of a compound primary key will be cast to string before the components are joined to a single string by `|`.
 
 #### Excluded Columns
 
@@ -162,7 +175,7 @@ The easiest way to do so is using `Carbonite.insert/2` within an `Ecto.Multi` op
 
 ```elixir
 Ecto.Multi.new()
-|> Carbonite.insert(meta: %{type: "rabbit_inserted"})
+|> Carbonite.Multi.insert_transaction(%{meta: %{type: "rabbit_inserted"}})
 |> Ecto.Multi.insert(:rabbit, &MyApp.Rabbit.create_changeset(&1.params))
 |> MyApp.Repo.transaction()
 ```
@@ -176,7 +189,7 @@ If you don't have the luxury of an `Ecto.Multi`, you can create a changeset for 
 ```elixir
 MyApp.Repo.transaction(fn ->
   %{meta: %{type: "rabbit_inserted"}}
-  |> Carbonite.transaction_changeset()
+  |> Carbonite.Transaction.changeset()
   |> MyApp.Repo.insert!()
 
   # ...
@@ -189,7 +202,7 @@ In case you do not have access to metadata you want to persist in the `Carbonite
 
 ```elixir
 # e.g., in a controller or plug
-Carbonite.put_meta(:user_id, ...)
+Carbonite.Transaction.put_meta(:user_id, ...)
 ```
 
 <!-- MDOC -->

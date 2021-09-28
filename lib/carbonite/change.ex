@@ -13,6 +13,8 @@ defmodule Carbonite.Change do
   `DELETE` statements have the delete data in `data` while `changed` is again an empty list.
   """
 
+  @moduledoc since: "0.1.0"
+
   use Ecto.Schema
 
   @primary_key false
@@ -23,7 +25,7 @@ defmodule Carbonite.Change do
           op: :insert | :update | :delete,
           table_prefix: String.t(),
           table_name: String.t(),
-          table_pk: [String.t()],
+          table_pk: nil | [String.t()],
           data: nil | map(),
           changed: [String.t()],
           transaction: Ecto.Association.NotLoaded.t() | Carbonite.Transaction.t()

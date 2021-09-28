@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-defmodule QuertTest do
+defmodule Carbonite.QueryTest do
   use ExUnit.Case, async: true
   import Ecto.Query, only: [from: 2]
   alias Carbonite.{Change, Query, Rabbit, TestRepo, Transaction}
@@ -13,7 +13,7 @@ defmodule QuertTest do
   defp insert_rabbits(_ \\ nil) do
     {:ok, results} =
       Ecto.Multi.new()
-      |> Carbonite.insert()
+      |> Carbonite.Multi.insert_transaction()
       |> Ecto.Multi.put(:params, %{name: "Jack", age: 99})
       |> Ecto.Multi.insert(:rabbit, &Rabbit.create_changeset(&1.params))
       |> Ecto.Multi.put(:params2, %{name: "Lily", age: 172})

@@ -151,6 +151,17 @@ defmodule CaptureTest do
              ] = select_changes()
     end
 
+    test "table_pk is NULL when primary_key_columns is empty" do
+      query!("UPDATE carbonite_default.triggers SET primary_key_columns = '{}';")
+
+      TestRepo.transaction(fn ->
+        insert_transaction()
+        insert_jack()
+      end)
+
+      assert [%{"table_pk" => nil}] = select_changes()
+    end
+
     test "a friendly error is raised when transaction is not inserted or is inserted too late" do
       msg =
         "ERROR 23503 (foreign_key_violation) INSERT on table public.rabbits " <>

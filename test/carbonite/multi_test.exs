@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
-defmodule APITest do
+defmodule Carbonite.MultiTest do
   use ExUnit.Case, async: true
+  import Carbonite.Multi
   alias Carbonite.{Rabbit, TestRepo}
   alias Ecto.Adapters.SQL.Sandbox
 
@@ -9,33 +10,11 @@ defmodule APITest do
     :ok = Sandbox.checkout(TestRepo)
   end
 
-  describe "transaction_changeset/2" do
-    test "transaction_changesets an Ecto.Changeset for a transaction" do
-      %Ecto.Changeset{} = changeset = Carbonite.transaction_changeset()
-
-      assert changeset.changes.meta == %{}
-    end
-
-    test "allows setting metadata" do
-      %Ecto.Changeset{} = changeset = Carbonite.transaction_changeset(meta: %{foo: 1})
-
-      assert changeset.changes.meta == %{foo: 1}
-    end
-
-    test "merges metadata from process dictionary" do
-      Carbonite.put_meta(:foo, 1)
-      Carbonite.put_meta(:bar, 1)
-      %Ecto.Changeset{} = changeset = Carbonite.transaction_changeset(meta: %{foo: 2})
-
-      assert changeset.changes.meta == %{foo: 2, bar: 1}
-    end
-  end
-
-  describe "insert/3" do
+  describe "insert_transaction/3" do
     test "inserts a transaction within an Ecto.Multi" do
       {:ok, %{carbonite_transaction: %Carbonite.Transaction{} = tx}} =
         Ecto.Multi.new()
-        |> Carbonite.insert()
+        |> insert_transaction()
         |> Ecto.Multi.put(:params, %{name: "Jack", age: 99})
         |> Ecto.Multi.insert(:rabbit, &Rabbit.create_changeset(&1.params))
         |> TestRepo.transaction()
@@ -50,7 +29,7 @@ defmodule APITest do
     test "allows setting metadata" do
       {:ok, %{carbonite_transaction: %Carbonite.Transaction{} = tx}} =
         Ecto.Multi.new()
-        |> Carbonite.insert(meta: %{foo: 1})
+        |> insert_transaction(%{meta: %{foo: 1}})
         |> TestRepo.transaction()
 
       assert tx.meta == %{foo: 1}
@@ -60,11 +39,11 @@ defmodule APITest do
     end
 
     test "merges metadata from process dictionary" do
-      Carbonite.put_meta(:foo, 1)
+      Carbonite.Transaction.put_meta(:foo, 1)
 
       {:ok, %{carbonite_transaction: %Carbonite.Transaction{} = tx}} =
         Ecto.Multi.new()
-        |> Carbonite.insert()
+        |> insert_transaction()
         |> TestRepo.transaction()
 
       assert tx.meta == %{foo: 1}

@@ -5,6 +5,8 @@ defmodule Carbonite.Trigger do
   A `Carbonite.Trigger` stores per table configuration for the change capture trigger.
   """
 
+  @moduledoc since: "0.1.0"
+
   use Ecto.Schema
 
   @primary_key {:id, :id, autogenerate: true}

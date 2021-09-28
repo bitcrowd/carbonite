@@ -26,7 +26,7 @@ defmodule Carbonite.Rabbit do
   # Dirty little helper to make rabbits on the console.
   def make do
     Ecto.Multi.new()
-    |> Carbonite.insert()
+    |> Carbonite.Multi.insert_transaction()
     |> Ecto.Multi.insert(:rabbit, fn _ -> create_changeset(%{age: 101, name: "Janet"}) end)
     |> Carbonite.TestRepo.transaction()
   end
