@@ -76,6 +76,11 @@ defmodule Carbonite.MixProject do
         "format --check-formatted",
         "credo --strict",
         "dialyzer --format dialyxir"
+      ],
+      reset: [
+        "ecto.drop",
+        "ecto.create",
+        "ecto.migrate"
       ]
     ]
   end

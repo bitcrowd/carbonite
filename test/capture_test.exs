@@ -162,6 +162,18 @@ defmodule CaptureTest do
       assert [%{"table_pk" => nil}] = select_changes()
     end
 
+    test "override mode reverses the default mode" do
+      TestRepo.transaction(fn ->
+        query!("""
+        UPDATE carbonite_default.triggers SET override_transaction_id = pg_current_xact_id();
+        """)
+
+        insert_jack()
+      end)
+
+      assert select_changes() == []
+    end
+
     test "a friendly error is raised when transaction is not inserted or is inserted too late" do
       msg =
         "ERROR 23503 (foreign_key_violation) INSERT on table public.rabbits " <>

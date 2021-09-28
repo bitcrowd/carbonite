@@ -84,7 +84,7 @@ Carbonite implements the [Change-Data-Capture](https://en.wikipedia.org/wiki/Cha
 
 Consequently, much of Carbonite's logic lives in database functions and triggers. To get started, we need to create a migration using Ecto.
 
-### Migration
+## Installing the schema & triggers
 
 The following migration installs Carbonite into its "default prefix", a PostgreSQL _schema_ aptly called `carbonite_default`, and installs the change capture trigger for an exemplary table called `rabbits` (in the `public` schema). In a real-world scenario, you will most likely want to install the trigger for a set of tables and optionally split the transaction log into multiple partitions.
 
@@ -165,13 +165,13 @@ If desired, tables can participate in multiple partitions by adding multiple tri
 
 Keep in mind that each partition will need to be processed and purged separately, resulting in multiple streams of change data in your external storage.
 
-### Inserting a Transaction
+## Inserting a Transaction
 
 In your application logic, before modifying a versioned table like `rabbits`, you need to first create a `Carbonite.Transaction` record.
 
-#### With Ecto.Multi
+### With Ecto.Multi
 
-The easiest way to do so is using `Carbonite.insert/2` within an `Ecto.Multi` operation:
+The easiest way to do so is using `Carbonite.Multi.insert_transaction/2` within an `Ecto.Multi` operation:
 
 ```elixir
 Ecto.Multi.new()
@@ -182,9 +182,9 @@ Ecto.Multi.new()
 
 As you can see, the `Carbonite.Transaction` is a great place to store metadata for the operation. A "transaction type" would be an obvious choice to categorize the transactions. A `user_id` would be a good candidate for an transaction log, as well.
 
-#### Building a changeset for manual insertion
+### Building a changeset for manual insertion
 
-If you don't have the luxury of an `Ecto.Multi`, you can create a changeset for a `Carbonite.Transaction` using `Carbonite.transaction_changeset/1`:
+If you don't have the luxury of an `Ecto.Multi`, you can create a changeset for a `Carbonite.Transaction` using `Carbonite.Transaction.changeset/1`:
 
 ```elixir
 MyApp.Repo.transaction(fn ->
@@ -198,11 +198,61 @@ end)
 
 ### Setting metadata outside of the Transaction
 
-In case you do not have access to metadata you want to persist in the `Carbonite.Transaction` at the code site where you create it, you can use `Carbonite.put_meta/2` to store metadata in the _process dictionary_. This metadata is merged into the metadata given to `Carbonite.insert/2`.
+In case you do not have access to metadata you want to persist in the `Carbonite.Transaction` at the code site where you create it, you can use `Carbonite.Transaction.put_meta/2` to store metadata in the _process dictionary_. This metadata is merged into the metadata given to `Carbonite.Multi.insert_transaction/2`.
 
 ```elixir
 # e.g., in a controller or plug
 Carbonite.Transaction.put_meta(:user_id, ...)
+```
+
+## Testing / Bypassing Carbonite
+
+One of Carbonite's main selling points is that it is virtually impossible to forget to record a change to a table (due to the trigger) or to forget to insert an enclosing `Carbonite.Transaction` beforehand (due to the foreign key constraint between `changes` and `transactions`). However, in some circumstances it may be desirable to temporarily switch off change capturing. One such situation is the use of factories (e.g. ExMachina) inside your test suite: Inserting a transaction before each factory call quickly becomes cumbersome and will unnecessarily increase execution time.
+
+To bypass the capture trigger, Carbonite's trigger configuration provides a toggle mechanism consisting of two fields: `mode` and `override_transaction_id`. The former you set while installing the trigger on a table in a migration, while the latter allows to "override" whatever has been set at runtime, and only for the current transaction. If you are using Ecto's SQL sandbox for running transactional tests, this means the override is going to be active until the end of the test case.
+
+In general you have two options:
+
+1. Leave the `mode` at the default value of `"capture"` and *turn off* capturing as needed by switching to "override mode". This means for every test case where you do not care about change capturing, you explicitly disable the trigger before any database calls; for instance, in a ExUnit setup block. This approach has the benefit that you still capture all changes by default, and can't miss to test a code path that (in production) would require a `Carbonite.Transaction`. It is, however, still pretty expensive at ~1 additional SQL call per test case.
+2. Set the `mode` to `:ignore` on all triggers in your `:test` environment and instead selectively *turn on*  capturing in test cases where you want to assert on the captured data. For instance, you can set the trigger mode in your migration based on the Mix environment. This approach is overall way cheaper as it does not require any action in your tests by default. Yet you should make sure that you test all code paths that do mutate change-captured tables, in order to assert that each of these inserts a transaction as well.
+
+The following code snippet illustrates the second approach:
+
+```elixir
+# config/config.exs
+config :my_app, carbonite_mode: :capture
+
+# config/test.exs
+config :my_app, carbonite_mode: :ignore
+
+# priv/repo/migrations/000000000000_install_carbonite.exs
+defmodule MyApp.Repo.Migrations.InstallCarbonite do
+  @mode Application.compile_env!(:my_app, :carbonite_mode)
+
+  def up do
+    # ...
+    Carbonite.Migrations.install_trigger(:rabbits, mode: @mode)
+  end
+end
+
+# test/support/carbonite_helpers.exs
+defmodule MyApp.CarboniteHelpers do
+  def carbonite_override_mode(_) do
+    Ecto.Multi.new()
+    |> Carbonite.Multi.override_mode()
+    |> MyApp.Repo.transaction()
+
+    :ok
+  end
+end
+
+# test/some_test.exs
+def SomeTest do
+  use MyApp.DataCase
+  import MyApp.CarboniteHelpers
+
+  setup [:carbonite_override_mode]
+end
 ```
 
 <!-- MDOC -->

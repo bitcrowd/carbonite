@@ -7,7 +7,7 @@ defmodule Carbonite.Query do
 
   @moduledoc since: "0.1.1"
 
-  import Ecto.Query, only: [from: 2, preload: 2, put_query_prefix: 2]
+  import Ecto.Query
   import Carbonite, only: [default_prefix: 0]
   alias Carbonite.{Change, Transaction}
 
@@ -96,12 +96,11 @@ defmodule Carbonite.Query do
         record |> Map.fetch!(pk_col) |> to_string()
       end
 
-    from(c in Change,
-      where: c.table_prefix == ^table_prefix,
-      where: c.table_name == ^table_name,
-      where: c.table_pk == ^table_pk,
-      order_by: {:asc, :id}
-    )
+    from(c in Change)
+    |> where([c], c.table_prefix == ^table_prefix)
+    |> where([c], c.table_name == ^table_name)
+    |> where([c], c.table_pk == ^table_pk)
+    |> order_by({:asc, :id})
     |> put_query_prefix(carbonite_prefix)
     |> maybe_preload(opts, :transaction)
   end

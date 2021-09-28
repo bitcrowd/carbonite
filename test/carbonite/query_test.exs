@@ -2,7 +2,6 @@
 
 defmodule Carbonite.QueryTest do
   use ExUnit.Case, async: true
-  import Ecto.Query, only: [from: 2]
   alias Carbonite.{Change, Query, Rabbit, TestRepo, Transaction}
   alias Ecto.Adapters.SQL.Sandbox
 
@@ -21,12 +20,6 @@ defmodule Carbonite.QueryTest do
       |> TestRepo.transaction()
 
     Map.take(results, [:rabbit, :rabbit2])
-  end
-
-  defp count(schema) do
-    schema
-    |> from(select: count())
-    |> TestRepo.one!(prefix: Carbonite.default_prefix())
   end
 
   describe "current_transaction/2" do
@@ -48,13 +41,13 @@ defmodule Carbonite.QueryTest do
     end
 
     test "can be used to erase the current transaction" do
-      assert count(Transaction) == 1
-      assert count(Change) == 2
+      assert TestRepo.count(Transaction) == 1
+      assert TestRepo.count(Change) == 2
 
       TestRepo.delete_all(Query.current_transaction())
 
-      assert count(Transaction) == 0
-      assert count(Change) == 0
+      assert TestRepo.count(Transaction) == 0
+      assert TestRepo.count(Change) == 0
 
       # No unique constraint error as transaction has been deleted.
       insert_rabbits()

@@ -101,12 +101,16 @@ defmodule Carbonite.Migrations do
 
     # ---------------- Triggers ------------------
 
+    execute("CREATE TYPE #{prefix}.trigger_mode AS ENUM('capture', 'ignore');")
+
     create table("triggers", primary_key: false, prefix: prefix) do
       add(:id, :bigserial, null: false, primary_key: true)
       add(:table_prefix, :string, null: false)
       add(:table_name, :string, null: false)
       add(:primary_key_columns, {:array, :string}, null: false)
       add(:excluded_columns, {:array, :string}, null: false)
+      add(:mode, :"#{prefix}.trigger_mode", null: false)
+      add(:override_transaction_id, :xid8, null: true)
 
       timestamps()
     end
@@ -115,7 +119,12 @@ defmodule Carbonite.Migrations do
       index("triggers", [:table_prefix, :table_name],
         name: "table_index",
         unique: true,
-        include: [:primary_key_columns, :excluded_columns],
+        include: [
+          :primary_key_columns,
+          :excluded_columns,
+          :mode,
+          :override_transaction_id
+        ],
         prefix: prefix
       )
     )
@@ -139,6 +148,13 @@ defmodule Carbonite.Migrations do
         INTO trigger_row
         FROM #{prefix}.triggers
         WHERE table_prefix = TG_TABLE_SCHEMA AND table_name = TG_TABLE_NAME;
+
+      IF
+        (trigger_row.mode = 'ignore' AND trigger_row.override_transaction_id != pg_current_xact_id()) OR
+        (trigger_row.mode = 'capture' AND trigger_row.override_transaction_id = pg_current_xact_id())
+      THEN
+        RETURN NULL;
+      END IF;
 
       /* instantiate change row */
       change_row = ROW(
@@ -225,7 +241,9 @@ defmodule Carbonite.Migrations do
 
   @type trigger_option :: {:table_prefix, prefix()} | {:carbonite_prefix, prefix()}
   @type trigger_config_option ::
-          {:primary_key_columns, [column_name()]} | {:excluded_columns, [column_name()]}
+          {:primary_key_columns, [column_name()]}
+          | {:excluded_columns, [column_name()]}
+          | {:mode, :capture | :ignore}
 
   @doc """
   Installs a change capture trigger on a table.
@@ -244,13 +262,14 @@ defmodule Carbonite.Migrations do
     table_prefix = Keyword.get(opts, :table_prefix, @default_table_prefix)
     carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
-    execute("""
+    """
     CREATE TRIGGER capture_changes_into_#{carbonite_prefix}_trigger
     AFTER INSERT OR UPDATE OR DELETE
     ON #{table_prefix}.#{table_name}
     FOR EACH ROW
     EXECUTE PROCEDURE #{carbonite_prefix}.capture_changes();
-    """)
+    """
+    |> squish_and_execute()
 
     configure_trigger(table_name, opts)
 
@@ -260,6 +279,9 @@ defmodule Carbonite.Migrations do
   @doc """
   Alters a triggers configuration for a given table.
 
+  You need to specify all desired options each time you call this function, as the previous
+  configuration will be replaced.
+
   ## Options
 
   * `table_prefix` is the name of the schema the table lives in
@@ -267,6 +289,7 @@ defmodule Carbonite.Migrations do
   * `primary_key_columns` is a list of columns that form the primary key of the table
                           (defaults to `["id"]`, set to `[]` to disable)
   * `excluded_columns` is a list of columns to exclude from change captures
+  * `mode` is either `:capture` or `:ignore` and defines the default behaviour of the trigger
   """
   @spec configure_trigger(table_name()) :: :ok
   @spec configure_trigger(table_name(), [trigger_option() | trigger_config_option()]) :: :ok
@@ -276,17 +299,19 @@ defmodule Carbonite.Migrations do
 
     primary_key_columns = Keyword.get(opts, :primary_key_columns, ["id"]) |> column_list()
     excluded_columns = Keyword.get(opts, :excluded_columns) |> column_list()
+    mode = Keyword.get(opts, :mode, :capture)
 
     """
     INSERT INTO #{carbonite_prefix}.triggers (
-      table_prefix, table_name, primary_key_columns, excluded_columns, inserted_at, updated_at
+      table_prefix, table_name, primary_key_columns, excluded_columns, mode, inserted_at, updated_at
     ) VALUES (
-      '#{table_prefix}', '#{table_name}', '#{primary_key_columns}', '#{excluded_columns}', NOW(), NOW()
+      '#{table_prefix}', '#{table_name}', '#{primary_key_columns}', '#{excluded_columns}', '#{mode}', NOW(), NOW()
     )
     ON CONFLICT (table_prefix, table_name) DO
     UPDATE SET
       primary_key_columns = excluded.primary_key_columns,
       excluded_columns = excluded.excluded_columns,
+      mode = excluded.mode,
       updated_at = excluded.updated_at;
     """
     |> squish_and_execute()
