@@ -3,13 +3,9 @@
   - prefix tables with `carbonite_` again
   - explain in docs that this is possible
   - set default carbonite schema to public?
-* changes query (wip)
-  - join in transactions?
-* transactions query?
+* queries
+  - transaction query?
+  - documentation
 * change capturing
-  - switch from old/new fields to row/changed (array of column names) again
   - add filtered columns
-* migrations
-  - generator instead of library?
-* ExMachina strategy for `insert_with_carbonite` :/
 * write tests for outbox
