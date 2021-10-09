@@ -23,8 +23,7 @@ defmodule Carbonite.MixProject do
 
       # hex.pm
       package: package(),
-      description:
-        "Change-Data-Capture: Based on triggers, emphasizing transactions, including outbox",
+      description: "Audit trails for Elixir/PostgreSQL based on triggers",
 
       # hexdocs.pm
       name: "Carbonite",
