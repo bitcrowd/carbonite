@@ -15,6 +15,7 @@
 * Moved top-level functions to nested modules `Transaction` and `Multi`
 * Made `table_pk` be `NULL` when `primary_key_columns` is an empty array
 * Default `primary_key_columns` to `["id"]`
+* Renamed `prefix` option to `carbonite_prefix` on `install_schema/2` for consistency
 
 ## [0.1.0] - 2021-09-01
 
