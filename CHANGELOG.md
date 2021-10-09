@@ -9,6 +9,7 @@
 * Update Postgrex to 0.15.11 and drop local `Xid8` type
 * Add `mode` field to trigger (capture or ignore)
 * Add "override mode" reversing the `mode` option for the current transaction to enable/disable capturing on demand (e.g. in tests)
+* Add filtered columns
 
 ### Changed
 

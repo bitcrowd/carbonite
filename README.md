@@ -140,12 +140,18 @@ Carbonite.Migrations.install_trigger(:rabbits, primary_key_columns: ["house", "a
 
 Since the `changes` table keeps versions of a multitude of different source tables, the `table_pk` column has type `VARCHAR` and primary keys are first cast to string. For composite primary keys, set the `primary_key_columns` option to an array as shown above. Each component of a compound primary key will be cast to string before the components are joined to a single string by `|`.
 
-#### Excluded Columns
+#### Excluded  and Filtered Columns
 
 In case your table contains sensitive data or data otherwise undesirable for change capturing, you can exclude columns using the `excluded_columns` option. Excluded columns will not appear in the captured data. If an `UPDATE` on a table solely touches excluded columns, the entire `UPDATE` will not be recorded.
 
 ```elixir
 Carbonite.Migrations.install_trigger(:rabbits, excluded_columns: ["age"])
+```
+
+If you still want to capture changes to a column (in the `changed` field), but don't need the exact data, you can make it a "filtered" column. These columns appear as `"[FILTERED]" in the `data` field.
+
+```elixir
+Carbonite.Migrations.install_trigger(:rabbits, filtered_columns: ["age"])
 ```
 
 If you forgot to exclude a column, you can reconfigure a trigger for a particular table using `configure_trigger/2`:
