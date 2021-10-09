@@ -14,19 +14,19 @@ defmodule Carbonite.Migrations do
   @type table_name :: binary() | atom()
   @type column_name :: binary()
 
-  @type schema_option :: {:prefix, prefix()}
+  @type schema_option :: {:carbonite_prefix, prefix()}
 
   @doc """
   Installs a Carbonite transaction log.
 
   ## Options
 
-  * `prefix` defines the transaction log's schema, defaults to `"carbonite_default"`
+  * `carbonite_prefix` defines the transaction log's schema, defaults to `"carbonite_default"`
   """
   @spec install_schema() :: :ok
   @spec install_schema([schema_option()]) :: :ok
   def install_schema(opts \\ []) when is_list(opts) do
-    prefix = Keyword.get(opts, :prefix, default_prefix())
+    prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
     # ---------------- Schema --------------------
 

@@ -160,7 +160,7 @@ Carbonite.Migrations.configure_trigger(:rabbits, excluded_columns: ["age"])
 Carbonite can install its tables into multiple database schemas using the `prefix` option. You can use this feature to "partition" your captured data.
 
 ```elixir
-Carbonite.Migrations.install_schema(prefix: "carbonite_lagomorpha")
+Carbonite.Migrations.install_schema(carbonite_prefix: "carbonite_lagomorpha")
 Carbonite.Migrations.install_trigger(:rabbits, carbonite_prefix: "carbonite_lagomorpha")
 ```
 
@@ -214,7 +214,7 @@ One of Carbonite's key features is that it is virtually impossible to forget to 
 
 To bypass the capture trigger, Carbonite's trigger configuration provides a toggle mechanism consisting of two fields: `mode` and `override_transaction_id`. The former you set while installing the trigger on a table in a migration, while the latter allows to "override" whatever has been set at runtime, and only for the current transaction. If you are using Ecto's SQL sandbox for running transactional tests, this means the override is going to be active until the end of the test case.
 
-Consequentially, you have two options:
+As a result, you have two options:
 
 1. Leave the `mode` at the default value of `:capture` and *turn off* capturing as needed by switching to "override mode". This means for every test case where you do not care about change capturing, you explicitly disable the trigger before any database calls; for instance, in a ExUnit setup block. This approach has the benefit that you still capture all changes by default, and can't miss to test a code path that (in production) would require a `Carbonite.Transaction`. It is, however, still pretty expensive at ~1 additional SQL call per test case.
 2. Set the `mode` to `:ignore` on all triggers in your `:test` environment and instead selectively *turn on*  capturing in test cases where you want to assert on the captured data. For instance, you can set the trigger mode in your migration based on the Mix environment. This approach is cheaper as it does not require any action in your tests by default. Yet you should make sure that you test all code paths that do mutate change-captured tables, in order to assert that each of these inserts a transaction as well.
