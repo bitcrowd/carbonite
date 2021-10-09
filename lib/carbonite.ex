@@ -11,7 +11,7 @@ defmodule Carbonite do
 
   @moduledoc since: "0.1.0"
 
-  @doc "Returns the default transaction log prefix."
+  @doc "Returns the default audit trail prefix."
   @doc since: "0.1.0"
   @spec default_prefix() :: binary()
   def default_prefix, do: "carbonite_default"

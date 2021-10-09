@@ -2,7 +2,7 @@
 
 defmodule Carbonite.Query do
   @moduledoc """
-  This module provides query functions for retrieving transaction logs from the database.
+  This module provides query functions for retrieving audit trails from the database.
   """
 
   @moduledoc since: "0.1.1"
@@ -52,7 +52,7 @@ defmodule Carbonite.Query do
 
   ## Options
 
-  * `carbonite_prefix` defines the transaction log's schema, defaults to `"carbonite_default"`
+  * `carbonite_prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
   * `preload` can be used to preload the changes
   """
   @doc since: "0.1.1"
@@ -77,9 +77,15 @@ defmodule Carbonite.Query do
   for it from the database, ordered ascending by their ID (i.e., roughly by insertion date
   descending).
 
+  ## Example
+
+      %MyApp.Rabbit{id: 1}
+      |> Carbonite.Query.changes()
+      |> MyApp.Repo.all()
+
   ## Options
 
-  * `carbonite_prefix` defines the transaction log's schema, defaults to `"carbonite_default"`
+  * `carbonite_prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
   * `preload` can be used to preload the transaction
   """
   @doc since: "0.1.1"

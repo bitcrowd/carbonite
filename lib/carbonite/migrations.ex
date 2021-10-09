@@ -2,7 +2,7 @@
 
 defmodule Carbonite.Migrations do
   @moduledoc """
-  Functions to setup Carbonite transaction logs in your migrations.
+  Functions to setup Carbonite audit trails in your migrations.
   """
 
   @moduledoc since: "0.1.0"
@@ -17,11 +17,11 @@ defmodule Carbonite.Migrations do
   @type schema_option :: {:carbonite_prefix, prefix()}
 
   @doc """
-  Installs a Carbonite transaction log.
+  Installs a Carbonite audit trail.
 
   ## Options
 
-  * `carbonite_prefix` defines the transaction log's schema, defaults to `"carbonite_default"`
+  * `carbonite_prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
   """
   @spec install_schema() :: :ok
   @spec install_schema([schema_option()]) :: :ok
@@ -223,11 +223,11 @@ defmodule Carbonite.Migrations do
   end
 
   @doc """
-  Removes a Carbonite transaction log from the database.
+  Removes a Carbonite audit trail from the database.
 
   ## Options
 
-  * `prefix` defines the transaction log's schema, defaults to `"carbonite_default"`
+  * `prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
   """
   @spec drop_schema() :: :ok
   @spec drop_schema([schema_option()]) :: :ok
@@ -251,7 +251,7 @@ defmodule Carbonite.Migrations do
   ## Options
 
   * `table_prefix` is the name of the schema the table lives in
-  * `carbonite_prefix` is the schema of the transaction log, defaults to `"carbonite_default"`
+  * `carbonite_prefix` is the schema of the audit trail, defaults to `"carbonite_default"`
   * `primary_key_columns` is a list of columns that form the primary key of the table
                           (defaults to `["id"]`, set to `[]` to disable)
   * `excluded_columns` is a list of columns to exclude from change captures
@@ -285,7 +285,7 @@ defmodule Carbonite.Migrations do
   ## Options
 
   * `table_prefix` is the name of the schema the table lives in
-  * `carbonite_prefix` is the schema of the transaction log, defaults to `"carbonite_default"`
+  * `carbonite_prefix` is the schema of the audit trail, defaults to `"carbonite_default"`
   * `primary_key_columns` is a list of columns that form the primary key of the table
                           (defaults to `["id"]`, set to `[]` to disable)
   * `excluded_columns` is a list of columns to exclude from change captures
@@ -323,7 +323,7 @@ defmodule Carbonite.Migrations do
   ## Options
 
   * `table_prefix` is the name of the schema the table lives in
-  * `carbonite_prefix` is the schema of the transaction log, defaults to `"carbonite_default"`
+  * `carbonite_prefix` is the schema of the audit trail, defaults to `"carbonite_default"`
   """
   @spec drop_trigger(table_name()) :: :ok
   @spec drop_trigger(table_name(), [trigger_option()]) :: :ok

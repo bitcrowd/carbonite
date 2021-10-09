@@ -89,7 +89,7 @@ Existing solutions for CDC on top of a PostgreSQL database (e.g., [Debezium](htt
 
 ## Installing the schema & triggers
 
-The following migration installs Carbonite into its "default prefix", a PostgreSQL _schema_ aptly called `carbonite_default`, and installs the change capture trigger for an exemplary table called `rabbits` (in the `public` schema). In a real-world scenario, you will most likely want to install the trigger for a set of tables and optionally split the transaction log into multiple partitions.
+The following migration installs Carbonite into its "default prefix", a PostgreSQL _schema_ aptly called `carbonite_default`, and installs the change capture trigger for an exemplary table called `rabbits` (in the `public` schema). In a real-world scenario, you will most likely want to install the trigger for a set of tables and optionally split the audit trail into multiple partitions.
 
 See `Carbonite.Migrations` for more information on migrations.
 
@@ -155,7 +155,7 @@ If you forgot to exclude a column, you can reconfigure a trigger for a particula
 Carbonite.Migrations.configure_trigger(:rabbits, excluded_columns: ["age"])
 ```
 
-#### Partitioning the Transaction Log
+#### Partitioning the Audit Trail
 
 Carbonite can install its tables into multiple database schemas using the `prefix` option. You can use this feature to "partition" your captured data.
 
@@ -206,6 +206,20 @@ In case you do not have access to metadata you want to persist in the `Carbonite
 ```elixir
 # e.g., in a controller or plug
 Carbonite.Transaction.put_meta(:user_id, ...)
+```
+
+## Retrieving data
+
+Of course, persisting the audit trail is not an end in itself. At some point you will want to read the data back and make it accessible to the user. `Carbonite.Query` offers a small suite of helper functions that make it easier to query the database for `Transaction` and `Change` records.
+
+### Fetching Changes
+
+The `Carbonite.Query.changes/2` function constructs an `Ecto.Query` from a schema struct, loading all changes stored for the given source record.
+
+```elixir
+%MyApp.Rabbit{id: 1}
+|> Carbonite.Query.changes()
+|> MyApp.Repo.all()
 ```
 
 ## Testing / Bypassing Carbonite

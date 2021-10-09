@@ -2,7 +2,7 @@
 
 defmodule Carbonite.Multi do
   @moduledoc """
-  This module provides functions for dealing with transaction logs in the context of Ecto.Multi.
+  This module provides functions for dealing with audit trails in the context of Ecto.Multi.
   """
 
   import Carbonite, only: [default_prefix: 0]
@@ -20,7 +20,7 @@ defmodule Carbonite.Multi do
 
   ## Options
 
-  * `carbonite_prefix` defines the transaction log's schema, defaults to `"carbonite_default"`
+  * `carbonite_prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
   * `params` map of params for the `Carbonite.Transaction` (e.g., `:meta`)
   """
   @doc since: "0.1.1"
