@@ -138,7 +138,7 @@ Carbonite.Migrations.install_trigger(:rabbits, primary_key_columns: ["identifier
 Carbonite.Migrations.install_trigger(:rabbits, primary_key_columns: ["house", "apartment_no"])
 ```
 
-Since the `changes` table keeps versions of a multitude of different source tables, the `table_pk` column has type `VARCHAR` and primary keys are first cast to string. For composite primary keys, set the `primary_key_columns` option to an array as shown above. Each component of a compound primary key will be cast to string before the components are joined to a single string by `|`.
+Since the `changes` table keeps versions of a multitude of different source tables, primary keys are first cast to string (the `table_pk` column has type `VARCHAR[]`). For composite primary keys, set the `primary_key_columns` option to an array as shown above. Each component of a compound primary key will be cast to string before the components are joined into the array.
 
 #### Excluded  and Filtered Columns
 
