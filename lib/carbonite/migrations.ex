@@ -109,6 +109,7 @@ defmodule Carbonite.Migrations do
       add(:table_name, :string, null: false)
       add(:primary_key_columns, {:array, :string}, null: false)
       add(:excluded_columns, {:array, :string}, null: false)
+      add(:filtered_columns, {:array, :string}, null: false)
       add(:mode, :"#{prefix}.trigger_mode", null: false)
       add(:override_transaction_id, :xid8, null: true)
 
@@ -122,6 +123,7 @@ defmodule Carbonite.Migrations do
         include: [
           :primary_key_columns,
           :excluded_columns,
+          :filtered_columns,
           :mode,
           :override_transaction_id
         ],
@@ -138,9 +140,8 @@ defmodule Carbonite.Migrations do
       trigger_row #{prefix}.triggers;
       change_row #{prefix}.changes;
       pk_source RECORD;
-      pk_col VARCHAR;
+      col_name VARCHAR;
       pk_col_val VARCHAR;
-      pk_col_val_arr VARCHAR[] := '{}';
       old_field RECORD;
     BEGIN
       /* load trigger config */
@@ -178,8 +179,8 @@ defmodule Carbonite.Migrations do
 
         change_row.table_pk := '{}';
 
-        FOREACH pk_col IN ARRAY trigger_row.primary_key_columns LOOP
-          EXECUTE 'SELECT $1.' || pk_col || '::text' USING pk_source INTO pk_col_val;
+        FOREACH col_name IN ARRAY trigger_row.primary_key_columns LOOP
+          EXECUTE 'SELECT $1.' || col_name || '::text' USING pk_source INTO pk_col_val;
           change_row.table_pk := change_row.table_pk || pk_col_val;
         END LOOP;
       END IF;
@@ -203,6 +204,11 @@ defmodule Carbonite.Migrations do
       ELSIF (TG_OP = 'INSERT') THEN
         change_row.data = to_jsonb(NEW.*) - trigger_row.excluded_columns;
       END IF;
+
+      /* filtered columns */
+      FOREACH col_name IN ARRAY trigger_row.filtered_columns LOOP
+        change_row.data = jsonb_set(change_row.data, ('{' || col_name || '}')::text[], jsonb('"[FILTERED]"'));
+      END LOOP;
 
       /* insert, fail gracefully unless transaction record present */
       BEGIN
@@ -255,6 +261,7 @@ defmodule Carbonite.Migrations do
   * `primary_key_columns` is a list of columns that form the primary key of the table
                           (defaults to `["id"]`, set to `[]` to disable)
   * `excluded_columns` is a list of columns to exclude from change captures
+  * `filtered_columns` is a list of columns that appear as '[FILTERED]' in the data
   """
   @spec install_trigger(table_name()) :: :ok
   @spec install_trigger(table_name(), [trigger_option() | trigger_config_option()]) :: :ok
@@ -289,6 +296,7 @@ defmodule Carbonite.Migrations do
   * `primary_key_columns` is a list of columns that form the primary key of the table
                           (defaults to `["id"]`, set to `[]` to disable)
   * `excluded_columns` is a list of columns to exclude from change captures
+  * `filtered_columns` is a list of columns that appear as '[FILTERED]' in the data
   * `mode` is either `:capture` or `:ignore` and defines the default behaviour of the trigger
   """
   @spec configure_trigger(table_name()) :: :ok
@@ -299,13 +307,28 @@ defmodule Carbonite.Migrations do
 
     primary_key_columns = Keyword.get(opts, :primary_key_columns, ["id"]) |> column_list()
     excluded_columns = Keyword.get(opts, :excluded_columns) |> column_list()
+    filtered_columns = Keyword.get(opts, :filtered_columns) |> column_list()
     mode = Keyword.get(opts, :mode, :capture)
 
     """
     INSERT INTO #{carbonite_prefix}.triggers (
-      table_prefix, table_name, primary_key_columns, excluded_columns, mode, inserted_at, updated_at
+      table_prefix,
+      table_name,
+      primary_key_columns,
+      excluded_columns,
+      filtered_columns,
+      mode,
+      inserted_at,
+      updated_at
     ) VALUES (
-      '#{table_prefix}', '#{table_name}', '#{primary_key_columns}', '#{excluded_columns}', '#{mode}', NOW(), NOW()
+      '#{table_prefix}',
+      '#{table_name}',
+      '#{primary_key_columns}',
+      '#{excluded_columns}',
+      '#{filtered_columns}',
+      '#{mode}',
+      NOW(),
+      NOW()
     )
     ON CONFLICT (table_prefix, table_name) DO
     UPDATE SET

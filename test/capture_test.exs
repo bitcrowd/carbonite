@@ -219,4 +219,19 @@ defmodule CaptureTest do
       assert [%{"op" => "insert"}] = select_changes()
     end
   end
+
+  describe "filtered columns" do
+    test "appear as [FILTERED] in the data" do
+      TestRepo.transaction(fn ->
+        query!("""
+        UPDATE carbonite_default.triggers SET filtered_columns = '{name}';
+        """)
+
+        insert_transaction()
+        insert_jack()
+      end)
+
+      assert [%{"data" => %{"name" => "[FILTERED]"}}] = select_changes()
+    end
+  end
 end
