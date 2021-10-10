@@ -64,7 +64,7 @@ Due to its use of [`pg_current_xact_id`](https://www.postgresql.org/docs/13/func
 
 def deps do
   [
-    {:carbonite, "~> 0.2.0"}
+    {:carbonite, "~> 0.2.1"}
   ]
 end
 ```
@@ -148,7 +148,7 @@ In case your table contains sensitive data or data otherwise undesirable for cha
 Carbonite.Migrations.install_trigger(:rabbits, excluded_columns: ["age"])
 ```
 
-If you still want to capture changes to a column (in the `changed` field), but don't need the exact data, you can make it a "filtered" column. These columns appear as `"[FILTERED]" in the `data` field.
+If you still want to capture changes to a column (in the `changed` field), but don't need the exact data, you can make it a "filtered" column. These columns appear as `"[FILTERED]"` in the `data` field.
 
 ```elixir
 Carbonite.Migrations.install_trigger(:rabbits, filtered_columns: ["age"])
