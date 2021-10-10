@@ -3,7 +3,7 @@
 defmodule Carbonite.MixProject do
   use Mix.Project
 
-  @version "0.2.0"
+  @version "0.2.1"
 
   def project do
     [
@@ -31,7 +31,7 @@ defmodule Carbonite.MixProject do
       homepage_url: "https://github.com/bitcrowd/carbonite",
       docs: [
         main: "Carbonite",
-        extras: ["README.md", "CHANGELOG.md": [title: "Changelog"]],
+        extras: ["LICENSE", "README.md", "CHANGELOG.md": [title: "Changelog"]],
         source_ref: "v#{@version}",
         source_url: "https://github.com/bitcrowd/carbonite",
         formatters: ["html"]

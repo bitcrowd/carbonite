@@ -1,4 +1,10 @@
-## Unreleased
+## [0.2.1] - 2021-10-10
+
+### Fixed
+
+* Fixed broken documentation
+
+## [0.2.0] - 2021-10-10
 
 ### Added
 
