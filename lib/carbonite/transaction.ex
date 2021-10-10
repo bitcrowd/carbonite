@@ -45,7 +45,7 @@ defmodule Carbonite.Transaction do
 
   Returns the currently stored metadata.
   """
-  @doc since: "0.1.1"
+  @doc since: "0.2.0"
   @spec put_meta(key :: any(), value :: any()) :: meta()
   def put_meta(key, value) do
     meta = Map.put(current_meta(), key, value)
@@ -56,7 +56,7 @@ defmodule Carbonite.Transaction do
   @doc """
   Returns the currently stored metadata.
   """
-  @doc since: "0.1.1"
+  @doc since: "0.2.0"
   @spec current_meta() :: meta()
   def current_meta do
     Process.get(@meta_pdict_key) || %{}
@@ -68,7 +68,7 @@ defmodule Carbonite.Transaction do
   The `:meta` map from the params will be merged with the metadata currently stored in the
   process dictionary.
   """
-  @doc since: "0.1.1"
+  @doc since: "0.2.0"
   @spec changeset() :: Ecto.Changeset.t()
   @spec changeset(params :: map()) :: Ecto.Changeset.t()
   def changeset(params \\ %{}) do

@@ -334,6 +334,7 @@ defmodule Carbonite.Migrations do
     UPDATE SET
       primary_key_columns = excluded.primary_key_columns,
       excluded_columns = excluded.excluded_columns,
+      filtered_columns = excluded.filtered_columns,
       mode = excluded.mode,
       updated_at = excluded.updated_at;
     """
