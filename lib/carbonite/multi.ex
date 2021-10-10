@@ -5,6 +5,8 @@ defmodule Carbonite.Multi do
   This module provides functions for dealing with audit trails in the context of Ecto.Multi.
   """
 
+  @moduledoc since: "0.2.0"
+
   import Carbonite, only: [default_prefix: 0]
   import Ecto.Query, only: [from: 2]
   alias Carbonite.{Transaction, Trigger}
@@ -23,7 +25,7 @@ defmodule Carbonite.Multi do
   * `carbonite_prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
   * `params` map of params for the `Carbonite.Transaction` (e.g., `:meta`)
   """
-  @doc since: "0.1.1"
+  @doc since: "0.2.0"
   @spec insert_transaction(Multi.t()) :: Multi.t()
   @spec insert_transaction(Multi.t(), params()) :: Multi.t()
   @spec insert_transaction(Multi.t(), params(), [insert_transaction_option()]) :: Multi.t()
@@ -41,7 +43,7 @@ defmodule Carbonite.Multi do
   @doc """
   Sets the current transaction to "override mode" for all tables in a translation log.
   """
-  @doc since: "0.1.1"
+  @doc since: "0.2.0"
   @spec override_mode(Multi.t(), [override_mode_option()]) :: Multi.t()
   def override_mode(%Multi{} = multi, opts \\ []) do
     carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())

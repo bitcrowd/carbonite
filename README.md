@@ -64,7 +64,7 @@ Due to its use of [`pg_current_xact_id`](https://www.postgresql.org/docs/13/func
 
 def deps do
   [
-    {:carbonite, "~> 0.1.0"}
+    {:carbonite, "~> 0.2.0"}
   ]
 end
 ```
@@ -289,3 +289,10 @@ The trigger-based table versioning derives from [`audit_trigger_91plus`](https:/
 ### Artwork
 
 The amazing Carbonite logo has been designed by [Petra Herberger](https://www.petra-herberger.de/). Thank you! 💜
+
+## Copyright and License
+
+Copyright © 2021, Bitcrowd GmbH.
+
+You may use and redistribute Carbonite and its source code under the Apache 2.0 License, see the
+[LICENSE](LICENSE) file for details.
