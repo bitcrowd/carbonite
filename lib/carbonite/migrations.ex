@@ -151,7 +151,7 @@ defmodule Carbonite.Migrations do
         WHERE table_prefix = TG_TABLE_SCHEMA AND table_name = TG_TABLE_NAME;
 
       IF
-        (trigger_row.mode = 'ignore' AND trigger_row.override_transaction_id != pg_current_xact_id()) OR
+        (trigger_row.mode = 'ignore' AND (trigger_row.override_transaction_id IS NULL OR trigger_row.override_transaction_id != pg_current_xact_id())) OR
         (trigger_row.mode = 'capture' AND trigger_row.override_transaction_id = pg_current_xact_id())
       THEN
         RETURN NULL;
