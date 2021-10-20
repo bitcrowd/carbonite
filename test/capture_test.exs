@@ -174,6 +174,20 @@ defmodule CaptureTest do
       assert select_changes() == []
     end
 
+    test "default mode can be set to ignore" do
+      # This test exists because we had a bug with the ignore mode
+      # when the override_transaction_id was NULL
+      TestRepo.transaction(fn ->
+        query!("""
+        UPDATE carbonite_default.triggers SET mode = 'ignore';
+        """)
+
+        insert_jack()
+      end)
+
+      assert select_changes() == []
+    end
+
     test "a friendly error is raised when transaction is not inserted or is inserted too late" do
       msg =
         "ERROR 23503 (foreign_key_violation) INSERT on table public.rabbits " <>

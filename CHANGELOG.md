@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixed
+
+* Fixed ignore mode when override_transaction_id is NULL
+
 ## [0.2.1] - 2021-10-10
 
 ### Fixed
