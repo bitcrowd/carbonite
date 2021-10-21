@@ -233,14 +233,38 @@ defmodule Carbonite.Migrations do
 
   ## Options
 
-  * `prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
+  * `carbonite_prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
   """
   @spec drop_schema() :: :ok
   @spec drop_schema([schema_option()]) :: :ok
   def drop_schema(opts \\ []) when is_list(opts) do
-    prefix = Keyword.get(opts, :prefix, default_prefix())
+    prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
     execute("DROP SCHEMA #{prefix};")
+  end
+
+  @doc """
+  Removes a Carbonite audit trail from the database but keeps the schema.
+
+  ## Options
+
+  * `carbonite_prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
+  """
+  @spec drop_tables() :: :ok
+  @spec drop_tables([schema_option()]) :: :ok
+  def drop_tables(opts \\ []) when is_list(opts) do
+    prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
+
+    execute("DROP FUNCTION #{prefix}.capture_changes();")
+
+    execute("DROP TABLE #{prefix}.triggers;")
+    execute("DROP TYPE #{prefix}.trigger_mode;")
+
+    execute("DROP TABLE #{prefix}.changes;")
+    execute("DROP TYPE #{prefix}.change_op;")
+
+    execute("DROP TABLE #{prefix}.transactions;")
+    execute("DROP FUNCTION #{prefix}.set_transaction_id();")
   end
 
   @default_table_prefix "public"
