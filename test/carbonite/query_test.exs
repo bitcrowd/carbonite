@@ -57,19 +57,25 @@ defmodule Carbonite.QueryTest do
   describe "changes/2" do
     setup [:insert_rabbits]
 
+    defp changes(rabbit, opts \\ []) do
+      rabbit
+      |> Query.changes(opts)
+      |> TestRepo.all()
+    end
+
     test "queries changes for a given record given its struct", %{rabbit: rabbit} do
-      assert [%Change{data: %{"name" => "Jack"}}] = Query.changes(rabbit) |> TestRepo.all()
+      assert [%Change{data: %{"name" => "Jack"}}] = changes(rabbit)
     end
 
     test "can preload the transaction", %{rabbit: rabbit} do
-      assert [%Change{transaction: %Transaction{}}] =
-               Query.changes(rabbit, preload: :transaction) |> TestRepo.all()
+      assert [%Change{transaction: %Transaction{}}] = changes(rabbit, preload: :transaction)
+      assert [%Change{transaction: %Transaction{}}] = changes(rabbit, preload: [:transaction])
+      assert [%Change{transaction: %Transaction{}}] = changes(rabbit, preload: true)
+    end
 
-      assert [%Change{transaction: %Transaction{}}] =
-               Query.changes(rabbit, preload: [:transaction]) |> TestRepo.all()
-
-      assert [%Change{transaction: %Transaction{}}] =
-               Query.changes(rabbit, preload: true) |> TestRepo.all()
+    test "can override the schema prefix", %{rabbit: rabbit} do
+      assert changes(rabbit, table_prefix: "foo") == []
+      assert [%Change{}] = changes(rabbit, table_prefix: "public")
     end
   end
 end
