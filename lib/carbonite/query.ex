@@ -56,7 +56,8 @@ defmodule Carbonite.Query do
 
   @default_table_prefix "public"
 
-  @type changes_option :: {:carbonite_prefix, prefix()} | {:preload, preload()}
+  @type changes_option ::
+          {:carbonite_prefix, prefix()} | {:table_prefix, prefix()} | {:preload, preload()}
 
   @doc """
   Returns an `Ecto.Query` that can be used to select changes for a single record.
@@ -74,15 +75,20 @@ defmodule Carbonite.Query do
   ## Options
 
   * `carbonite_prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
+  * `table_prefix` allows to override the table prefix, defaults to schema prefix of the record
   * `preload` can be used to preload the transaction
   """
   @doc since: "0.2.0"
-  @spec changes(Ecto.Schema.t()) :: Ecto.Query.t()
-  @spec changes(Ecto.Schema.t(), [changes_option()]) :: Ecto.Query.t()
+  @spec changes(record :: Ecto.Schema.t()) :: Ecto.Query.t()
+  @spec changes(record :: Ecto.Schema.t(), [changes_option()]) :: Ecto.Query.t()
   def changes(%schema{__meta__: %Ecto.Schema.Metadata{}} = record, opts \\ []) do
     carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
-    table_prefix = schema.__schema__(:prefix) || @default_table_prefix
+    table_prefix =
+      Keyword.get_lazy(opts, :table_prefix, fn ->
+        schema.__schema__(:prefix) || @default_table_prefix
+      end)
+
     table_name = schema.__schema__(:source)
 
     table_pk =
