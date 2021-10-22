@@ -23,6 +23,7 @@ defmodule Carbonite.Migrations do
 
   * `carbonite_prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
   """
+  @doc since: "0.1.0"
   @spec install_schema() :: :ok
   @spec install_schema([schema_option()]) :: :ok
   def install_schema(opts \\ []) when is_list(opts) do
@@ -235,6 +236,7 @@ defmodule Carbonite.Migrations do
 
   * `carbonite_prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
   """
+  @doc since: "0.1.0"
   @spec drop_schema() :: :ok
   @spec drop_schema([schema_option()]) :: :ok
   def drop_schema(opts \\ []) when is_list(opts) do
@@ -255,6 +257,7 @@ defmodule Carbonite.Migrations do
 
   * `carbonite_prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
   """
+  @doc since: "0.3.0"
   @spec drop_tables() :: :ok
   @spec drop_tables([schema_option()]) :: :ok
   def drop_tables(opts \\ []) when is_list(opts) do
@@ -292,6 +295,7 @@ defmodule Carbonite.Migrations do
   * `excluded_columns` is a list of columns to exclude from change captures
   * `filtered_columns` is a list of columns that appear as '[FILTERED]' in the data
   """
+  @doc since: "0.1.0"
   @spec install_trigger(table_name()) :: :ok
   @spec install_trigger(table_name(), [trigger_option() | trigger_config_option()]) :: :ok
   def install_trigger(table_name, opts \\ []) do
@@ -328,6 +332,7 @@ defmodule Carbonite.Migrations do
   * `filtered_columns` is a list of columns that appear as '[FILTERED]' in the data
   * `mode` is either `:capture` or `:ignore` and defines the default behaviour of the trigger
   """
+  @doc since: "0.1.0"
   @spec configure_trigger(table_name()) :: :ok
   @spec configure_trigger(table_name(), [trigger_option() | trigger_config_option()]) :: :ok
   def configure_trigger(table_name, opts \\ []) do
@@ -378,6 +383,7 @@ defmodule Carbonite.Migrations do
   * `table_prefix` is the name of the schema the table lives in
   * `carbonite_prefix` is the schema of the audit trail, defaults to `"carbonite_default"`
   """
+  @doc since: "0.1.0"
   @spec drop_trigger(table_name()) :: :ok
   @spec drop_trigger(table_name(), [trigger_option()]) :: :ok
   def drop_trigger(table_name, opts \\ []) do
