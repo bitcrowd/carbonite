@@ -255,7 +255,7 @@ defmodule Carbonite.Migrations do
   def drop_tables(opts \\ []) when is_list(opts) do
     prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
-    execute("DROP FUNCTION #{prefix}.capture_changes();")
+    execute("DROP FUNCTION #{prefix}.capture_changes;")
 
     execute("DROP TABLE #{prefix}.triggers;")
     execute("DROP TYPE #{prefix}.trigger_mode;")
