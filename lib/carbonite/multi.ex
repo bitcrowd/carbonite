@@ -22,19 +22,44 @@ defmodule Carbonite.Multi do
 
   ## Options
 
+  * `name` the name for the multi step, defaults to `:carbonite_transaction`
   * `carbonite_prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
   * `params` map of params for the `Carbonite.Transaction` (e.g., `:meta`)
+
+  ## Multiple inserts in the same transaction
+
+  Normally, you should have exactly one `insert_transaction/3` call per database transaction. In
+  practise, there are two scenarios in this function may be called multiple times:
+
+  1. If an operation A, which calls `insert_transaction/3`, sometimes is nested within an outer
+     operation B, which also calls `insert_transaction/3`.
+  2. In tests using Ecto's SQL sandbox, subsequent calls to transactional operations (even to the
+     same operation twice) are wrapped inside the overarching test transaction, and hence also
+     effectively call `insert_transaction/3` within the same transaction.
+
+  While the first scenario can be resolved using appropriate control flow (e.g. by conditionally
+  disabling the inner `insert_transaction/3` call), the second scenario is quite common and often
+  unavoidable.
+
+  Therefore, `insert_transaction/3` **ignores** subsequent calls within the same database
+  transaction (equivalent to `ON CONFLICT DO NOTHING`), **discarding metadata** passed to all
+  calls but the first.
   """
   @doc since: "0.2.0"
   @spec insert_transaction(Multi.t()) :: Multi.t()
   @spec insert_transaction(Multi.t(), params()) :: Multi.t()
   @spec insert_transaction(Multi.t(), params(), [insert_transaction_option()]) :: Multi.t()
   def insert_transaction(%Multi{} = multi, params \\ %{}, opts \\ []) do
+    name = Keyword.get(opts, :name, :carbonite_transaction)
     carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
-    Multi.insert(multi, :carbonite_transaction, fn _state -> Transaction.changeset(params) end,
+    # NOTE: ON CONFLICT DO NOTHING does not combine with RETURNING, so we're forcing an UPDATE.
+
+    Multi.insert(multi, name, fn _state -> Transaction.changeset(params) end,
       prefix: carbonite_prefix,
-      returning: [:id]
+      on_conflict: {:replace, [:id]},
+      conflict_target: [:id],
+      returning: true
     )
   end
 

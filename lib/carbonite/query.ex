@@ -21,9 +21,7 @@ defmodule Carbonite.Query do
 
   This function is useful when your tests run in a database transaction using Ecto's SQL sandbox.
 
-  ## Examples
-
-  ### Asserting on the current transaction
+  ## Example: Asserting on the current transaction
 
   When you insert your `Carbonite.Transaction` record somewhere inside your domain logic, you do
   not wish to return it to the caller only to be able to assert on its attributes in tests. This
@@ -39,16 +37,6 @@ defmodule Carbonite.Query do
       # Same
       Carbonite.Query.current_transaction(preload: true)
       |> MyApp.Repo.all()
-
-  ### Erasing the current transaction
-
-  Sometimes your test code may run a particular function twice (in multiple transactions if it
-  wasn't for the SQL sandbox), in which case you may need to delete the `Carbonite.Transaction`
-  inserted first in between.
-
-      # This deletes the transaction as well as any associated change (per FK constraint)
-      Carbonite.Query.current_transaction()
-      |> MyApp.Repo.delete_all()
 
   ## Options
 

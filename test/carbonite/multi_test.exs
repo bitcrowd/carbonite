@@ -32,10 +32,8 @@ defmodule Carbonite.MultiTest do
         |> insert_transaction(%{meta: %{foo: 1}})
         |> TestRepo.transaction()
 
-      assert tx.meta == %{foo: 1}
-
       # atoms deserialize to strings
-      assert TestRepo.reload(tx).meta == %{"foo" => 1}
+      assert tx.meta == %{"foo" => 1}
     end
 
     test "merges metadata from process dictionary" do
@@ -46,7 +44,22 @@ defmodule Carbonite.MultiTest do
         |> insert_transaction()
         |> TestRepo.transaction()
 
-      assert tx.meta == %{foo: 1}
+      assert tx.meta == %{"foo" => 1}
+    end
+
+    test "subsequent inserts in a single transaction are ignored" do
+      {:ok,
+       %{
+         carbonite_transaction1: %Carbonite.Transaction{} = tx1,
+         carbonite_transaction2: %Carbonite.Transaction{} = tx2
+       }} =
+        Ecto.Multi.new()
+        |> insert_transaction(%{meta: %{foo: 1}}, name: :carbonite_transaction1)
+        |> insert_transaction(%{meta: %{foo: 2}}, name: :carbonite_transaction2)
+        |> TestRepo.transaction()
+
+      assert tx1.meta == %{"foo" => 1}
+      assert tx2.meta == %{"foo" => 1}
     end
   end
 
