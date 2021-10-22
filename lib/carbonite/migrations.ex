@@ -264,7 +264,7 @@ defmodule Carbonite.Migrations do
     execute("DROP TYPE #{prefix}.change_op;")
 
     execute("DROP TABLE #{prefix}.transactions;")
-    execute("DROP FUNCTION #{prefix}.set_transaction_id();")
+    execute("DROP FUNCTION #{prefix}.set_transaction_id;")
   end
 
   @default_table_prefix "public"
