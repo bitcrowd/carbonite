@@ -48,14 +48,17 @@ defmodule Carbonite.MultiTest do
     end
 
     test "subsequent inserts in a single transaction are ignored" do
-      {:ok,
-       %{
-         carbonite_transaction1: %Carbonite.Transaction{} = tx1,
-         carbonite_transaction2: %Carbonite.Transaction{} = tx2
-       }} =
+      # Since we're running in the SQL sandbox, both of these transactions
+      # actually reference the same transaction id.
+
+      {:ok, %{carbonite_transaction: tx1}} =
         Ecto.Multi.new()
-        |> insert_transaction(%{meta: %{foo: 1}}, name: :carbonite_transaction1)
-        |> insert_transaction(%{meta: %{foo: 2}}, name: :carbonite_transaction2)
+        |> insert_transaction(%{meta: %{foo: 1}})
+        |> TestRepo.transaction()
+
+      {:ok, %{carbonite_transaction: tx2}} =
+        Ecto.Multi.new()
+        |> insert_transaction(%{meta: %{foo: 2}})
         |> TestRepo.transaction()
 
       assert tx1.meta == %{"foo" => 1}

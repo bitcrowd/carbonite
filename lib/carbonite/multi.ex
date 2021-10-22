@@ -22,7 +22,6 @@ defmodule Carbonite.Multi do
 
   ## Options
 
-  * `name` the name for the multi step, defaults to `:carbonite_transaction`
   * `carbonite_prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
   * `params` map of params for the `Carbonite.Transaction` (e.g., `:meta`)
 
@@ -50,12 +49,11 @@ defmodule Carbonite.Multi do
   @spec insert_transaction(Multi.t(), params()) :: Multi.t()
   @spec insert_transaction(Multi.t(), params(), [insert_transaction_option()]) :: Multi.t()
   def insert_transaction(%Multi{} = multi, params \\ %{}, opts \\ []) do
-    name = Keyword.get(opts, :name, :carbonite_transaction)
     carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
     # NOTE: ON CONFLICT DO NOTHING does not combine with RETURNING, so we're forcing an UPDATE.
 
-    Multi.insert(multi, name, fn _state -> Transaction.changeset(params) end,
+    Multi.insert(multi, :carbonite_transaction, fn _state -> Transaction.changeset(params) end,
       prefix: carbonite_prefix,
       on_conflict: {:replace, [:id]},
       conflict_target: [:id],
