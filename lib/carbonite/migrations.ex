@@ -238,6 +238,7 @@ defmodule Carbonite.Migrations do
   @spec drop_schema() :: :ok
   @spec drop_schema([schema_option()]) :: :ok
   def drop_schema(opts \\ []) when is_list(opts) do
+    drop_tables(opts)
     prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
     execute("DROP SCHEMA #{prefix};")

@@ -2,15 +2,16 @@
 
 ### Added
 
-* `Carbonite.Migration.drop_tables/1` allows to drop the carbonite audit trail without removing the schema
+* `Carbonite.Migrations.drop_tables/1` allows to drop the carbonite audit trail without removing the schema
+
+### Changed
+
+* Renamed the option that can be passed to `Carbonite.Migrations.drop_schema/1` from `prefix` to `carbonite_prefix`
+* Changed `Carbonite.Migrations.drop_schema/1` to also drop the tables
 
 ### Fixed
 
 * Fixed ignore mode when override_transaction_id is NULL
-
-### Changed
-
-* Renamed the option that can be passed to `Carbonite.Migration.drop_schema/1` from `prefix` to `carbonite_prefix`
 
 ## [0.2.1] - 2021-10-10
 
