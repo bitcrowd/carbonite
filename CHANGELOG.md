@@ -8,10 +8,12 @@
 
 * Renamed the option that can be passed to `Carbonite.Migrations.drop_schema/1` from `prefix` to `carbonite_prefix`
 * Changed `Carbonite.Migrations.drop_schema/1` to also drop the tables
+* Made `Carbonite.Multi.insert_transaction/3` ignore conflicting `INSERT`s within the same transaction.
+* Also, changed `Carbonite.Multi.insert_transaction/3` to always reloads all fields from the database after insertion, immediately returning the JSONinified `meta` payload.
 
 ### Fixed
 
-* Fixed ignore mode when override_transaction_id is NULL
+* Fixed ignore mode when `override_transaction_id` is NULL
 
 ## [0.2.1] - 2021-10-10
 

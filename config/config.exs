@@ -13,6 +13,7 @@ if config_env() in [:dev, :test] do
 end
 
 if config_env() == :test do
+  # Set to :debug to see SQL logs.
   config :logger, level: :info
 
   config :carbonite, Carbonite.TestRepo, pool: Ecto.Adapters.SQL.Sandbox
