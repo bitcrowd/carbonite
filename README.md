@@ -64,7 +64,7 @@ Due to its use of [`pg_current_xact_id`](https://www.postgresql.org/docs/13/func
 
 def deps do
   [
-    {:carbonite, "~> 0.3.0"}
+    {:carbonite, "~> 0.3.1"}
   ]
 end
 ```

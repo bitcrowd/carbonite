@@ -37,7 +37,7 @@ defmodule Carbonite.Query do
   * `carbonite_prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
   * `preload` can be used to preload the changes
   """
-  @doc since: "0.4.0"
+  @doc since: "0.3.1"
   @spec transactions() :: Ecto.Query.t()
   @spec transactions([transactions_option()]) :: Ecto.Query.t()
   def transactions(opts \\ []) do
