@@ -9,7 +9,7 @@ defmodule Carbonite.QueryTest do
     :ok = Sandbox.checkout(TestRepo)
   end
 
-  defp insert_rabbits(_ \\ nil) do
+  defp insert_rabbits(_) do
     {:ok, results} =
       Ecto.Multi.new()
       |> Carbonite.Multi.insert_transaction()
@@ -22,35 +22,61 @@ defmodule Carbonite.QueryTest do
     Map.take(results, [:rabbit, :rabbit2])
   end
 
-  describe "current_transaction/2" do
-    setup [:insert_rabbits]
+  @historic_transaction_ids [100_000_000, 200_000_000]
 
-    test "can fetch the current transaction when inside SQL sandbox" do
-      assert [%Transaction{}] = TestRepo.all(Query.current_transaction())
+  defp insert_historic_transactions(_) do
+    for id <- @historic_transaction_ids do
+      TestRepo.insert!(%Transaction{id: id}, prefix: Carbonite.default_prefix())
+    end
+
+    :ok
+  end
+
+  describe "transactions/2" do
+    setup [:insert_historic_transactions, :insert_rabbits]
+
+    test "fetches all transactions" do
+      assert length(TestRepo.all(Query.transactions())) == 3
     end
 
     test "can preload changes alongside the transaction" do
-      assert [%Transaction{changes: [%Change{}, %Change{}]}] =
-               TestRepo.all(Query.current_transaction(preload: :changes))
+      assert [%Transaction{changes: []} | _] = TestRepo.all(Query.transactions(preload: :changes))
 
-      assert [%Transaction{changes: [%Change{}, %Change{}]}] =
-               TestRepo.all(Query.current_transaction(preload: [:changes]))
+      assert [%Transaction{changes: []} | _] =
+               TestRepo.all(Query.transactions(preload: [:changes]))
 
-      assert [%Transaction{changes: [%Change{}, %Change{}]}] =
-               TestRepo.all(Query.current_transaction(preload: true))
+      assert [%Transaction{changes: []} | _] = TestRepo.all(Query.transactions(preload: true))
+    end
+  end
+
+  describe "current_transaction/2" do
+    setup [:insert_historic_transactions, :insert_rabbits]
+
+    test "can fetch the current transaction when inside SQL sandbox" do
+      assert %Transaction{id: id} = TestRepo.one!(Query.current_transaction())
+
+      assert id not in @historic_transaction_ids
+    end
+
+    test "can preload changes alongside the transaction" do
+      assert %Transaction{changes: [%Change{}, %Change{}]} =
+               TestRepo.one!(Query.current_transaction(preload: :changes))
+
+      assert %Transaction{changes: [%Change{}, %Change{}]} =
+               TestRepo.one!(Query.current_transaction(preload: [:changes]))
+
+      assert %Transaction{changes: [%Change{}, %Change{}]} =
+               TestRepo.one!(Query.current_transaction(preload: true))
     end
 
     test "can be used to erase the current transaction" do
-      assert TestRepo.count(Transaction) == 1
+      assert TestRepo.count(Transaction) == 3
       assert TestRepo.count(Change) == 2
 
       TestRepo.delete_all(Query.current_transaction())
 
-      assert TestRepo.count(Transaction) == 0
+      assert TestRepo.count(Transaction) == 2
       assert TestRepo.count(Change) == 0
-
-      # No unique constraint error as transaction has been deleted.
-      insert_rabbits()
     end
   end
 

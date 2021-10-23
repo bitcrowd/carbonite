@@ -3,6 +3,7 @@
 ### Added
 
 * `table_prefix` option to `Query.changes/2` allows to override schema prefix of given record
+* `Query.transactions/1` query selects all transactions
 
 ## [0.3.0] - 2021-10-22
 

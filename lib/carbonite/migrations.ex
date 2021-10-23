@@ -54,7 +54,7 @@ defmodule Carbonite.Migrations do
     CREATE FUNCTION #{prefix}.set_transaction_id() RETURNS TRIGGER AS
     $body$
     BEGIN
-      NEW.id = pg_current_xact_id();
+      NEW.id = COALESCE(NEW.id, pg_current_xact_id());
       RETURN NEW;
     END
     $body$
