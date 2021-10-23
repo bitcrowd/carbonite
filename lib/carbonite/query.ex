@@ -14,6 +14,40 @@ defmodule Carbonite.Query do
   @type prefix :: binary() | atom()
   @type preload :: atom() | [atom()] | true
 
+  @type transactions_option :: {:carbonite_prefix, prefix()} | {:preload, preload()}
+
+  @doc """
+  Returns an `Ecto.Query` that can be used to select transactions from the database.
+
+  ## Examples
+
+      Carbonite.Query.transactions()
+      |> MyApp.Repo.all()
+
+      # Preload changes
+      Carbonite.Query.transactions(preload: :changes)
+      |> MyApp.Repo.all()
+
+      # Same
+      Carbonite.Query.transactions(preload: true)
+      |> MyApp.Repo.all()
+
+  ## Options
+
+  * `carbonite_prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
+  * `preload` can be used to preload the changes
+  """
+  @doc since: "0.4.0"
+  @spec transactions() :: Ecto.Query.t()
+  @spec transactions([transactions_option()]) :: Ecto.Query.t()
+  def transactions(opts \\ []) do
+    carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
+
+    from(t in Transaction)
+    |> put_query_prefix(carbonite_prefix)
+    |> maybe_preload(opts, :changes)
+  end
+
   @type current_transaction_option :: {:carbonite_prefix, prefix()} | {:preload, preload()}
 
   @doc """
@@ -25,18 +59,20 @@ defmodule Carbonite.Query do
 
   When you insert your `Carbonite.Transaction` record somewhere inside your domain logic, you do
   not wish to return it to the caller only to be able to assert on its attributes in tests. This
-  is how you can assert on the current transaction:
+  example shows how you could assert on the metadata inserted.
 
-      Carbonite.Query.current_transaction()
-      |> MyApp.Repo.all()
+      # Test running inside Ecto's SQL sandbox.
+      test "my test" do
+        some_operation_with_a_transaction()
 
-      # Preload changes
-      Carbonite.Query.current_transaction(preload: :changes)
-      |> MyApp.Repo.all()
+        assert current_transaction_meta() == %{"type" => "some_operation"}
+      end
 
-      # Same
-      Carbonite.Query.current_transaction(preload: true)
-      |> MyApp.Repo.all()
+      defp current_transaction_meta do
+        Carbonite.Query.current_transaction()
+        |> MyApp.Repo.one!()
+        |> Map.fetch(:meta)
+      end
 
   ## Options
 
