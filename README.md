@@ -31,7 +31,7 @@ On top of its database layer, Carbonite provides an API allowing developers to e
 
 ---
 
-<p align="center">🚧 This is work-in-progress and not yet ready to be used 🚧</p>
+<p align="center">🚧&ensp;This is work-in-progress and not yet ready to be used 🚧</p>
 
 ---
 
@@ -49,9 +49,9 @@ On top of its database layer, Carbonite provides an API allowing developers to e
 
 ## Installation
 
-### Requirements
+### Requirements ⚠️
 
-Due to its use of [`pg_current_xact_id`](https://www.postgresql.org/docs/13/functions-info.html#FUNCTIONS-PG-SNAPSHOT), Carbonite requires ⚠️ PostgreSQL version 13 or above ⚠️. If you see an error message like the following, your PostgreSQL installation is too old:
+Due to its use of [`pg_current_xact_id`](https://www.postgresql.org/docs/13/functions-info.html#FUNCTIONS-PG-SNAPSHOT), Carbonite requires **PostgreSQL version 13 or above**. If you see an error message like the following, your PostgreSQL installation is too old:
 
 ```
 ** (Postgrex.Error) ERROR 42704 (undefined_object) type "xid8" does not exist
@@ -82,14 +82,14 @@ Consequently, much of Carbonite's logic lives in database functions and triggers
 
 ---
 
-ℹ️ **Trigger vs. Write-Ahead-Log**
+ℹ️ &ensp;**Trigger vs. Write-Ahead-Log**
 
-Existing solutions for CDC on top of a PostgreSQL database (e.g., [Debezium](https://debezium.io/)) often tail the ["Write-Ahead-Log"](https://www.postgresql.org/docs/13/wal-intro.html) instead of using database logic & triggers to create change records. While this is likely more performant than using triggers, it makes it difficult to correlate changes on a transaction level as Carbonite does, and has different consistency guarantees. Carbonite makes this trade-off in favour of simplicity and universality. You should be able to run Carbonite's migrations on any hosted PostgreSQL instance without the need to tweak its configuration or install custom extensions before.
+Existing solutions for CDC on top of a PostgreSQL database (e.g. [Debezium](https://debezium.io/)) often tail the [Write-Ahead-Log](https://www.postgresql.org/docs/13/wal-intro.html) instead of using database logic & triggers to create change records. While this is likely more performant than using triggers, it makes it difficult to correlate changes on a transaction level as Carbonite does, and has different consistency guarantees. Carbonite makes this trade-off in favour of simplicity and universality. You should be able to run Carbonite's migrations on any hosted PostgreSQL instance without the need to tweak its configuration or install custom extensions before.
 
 
 ## Installing the schema & triggers
 
-The following migration installs Carbonite into its "default prefix", a PostgreSQL _schema_ aptly called `carbonite_default`, and installs the change capture trigger for an exemplary table called `rabbits` (in the `public` schema). In a real-world scenario, you will most likely want to install the trigger for a set of tables and optionally split the audit trail into multiple partitions.
+The following migration installs Carbonite into its "default prefix", a PostgreSQL _schema_ aptly called `carbonite_default`, and installs the change capture trigger for an exemplary table called `rabbits` which lives in the `public` schema. In a real-world scenario, you will most likely want to install the trigger for a set of tables and optionally split the audit trail into multiple partitions.
 
 See `Carbonite.Migrations` for more information on migrations.
 
@@ -148,17 +148,10 @@ In case your table contains sensitive data or data otherwise undesirable for cha
 Carbonite.Migrations.install_trigger(:rabbits, excluded_columns: ["age"])
 ```
 
-If you still want to capture changes to a column (in the `changed` field), but don't need the exact data, you can make it a "filtered" column. These columns appear as `"[FILTERED]"` in the `data` field.
+If you still want to capture changes to a column (in the `changed` field), but don't need the exact data, you can make it a "filtered" column. These columns appear as `[FILTERED]` in the `data` field.
 
 ```elixir
 Carbonite.Migrations.install_trigger(:rabbits, filtered_columns: ["age"])
-```
-
-If you forgot to exclude a column, you can reconfigure a trigger for a particular table using `configure_trigger/2`:
-
-```elixir
-# in another migration
-Carbonite.Migrations.configure_trigger(:rabbits, excluded_columns: ["age"])
 ```
 
 #### Partitioning the Audit Trail
@@ -174,7 +167,7 @@ If desired, tables can participate in multiple partitions by adding multiple tri
 
 Keep in mind that each partition will need to be processed and purged separately, resulting in multiple streams of change data in your external storage.
 
-## Inserting a Transaction
+## Inserting a `Transaction`
 
 In your application logic, before modifying a versioned table like `rabbits`, you need to first create a `Carbonite.Transaction` record.
 
@@ -189,7 +182,7 @@ Ecto.Multi.new()
 |> MyApp.Repo.transaction()
 ```
 
-As you can see, the `Carbonite.Transaction` is a great place to store metadata for the operation. A "transaction type" would be an obvious choice to categorize the transactions. A `user_id` would be a good candidate for an transaction log, as well.
+As you can see, the `Carbonite.Transaction` is a great place to store metadata for the operation. A `type` field can be used to categorize the transactions. A `user_id` would be a good candidate for a transaction log, as well.
 
 ### Building a changeset for manual insertion
 
@@ -205,7 +198,7 @@ MyApp.Repo.transaction(fn ->
 end)
 ```
 
-### Setting metadata outside of the Transaction
+### Setting metadata outside of the transaction
 
 In case you do not have access to metadata you want to persist in the `Carbonite.Transaction` at the code site where you create it, you can use `Carbonite.Transaction.put_meta/2` to store metadata in the _process dictionary_. This metadata is merged into the metadata given to `Carbonite.Multi.insert_transaction/2`.
 
@@ -218,7 +211,17 @@ Carbonite.Transaction.put_meta(:user_id, ...)
 
 Of course, persisting the audit trail is not an end in itself. At some point you will want to read the data back and make it accessible to the user. `Carbonite.Query` offers a small suite of helper functions that make it easier to query the database for `Transaction` and `Change` records.
 
-### Fetching Changes
+### Fetching transactions
+
+The `Carbonite.Query.transactions/1` function constructs an `Ecto.Query` for loading `Carbonite.Transaction` records from the database, optionally preloading their included changes. The query can be further refined to limit the result set.
+
+```elixir
+Carbonite.Query.transactions()
+|> Ecto.Query.where([t], t.inserted_at > ^earliest)
+|> MyApp.Repo.all()
+```
+
+### Fetching changes of invididual records
 
 The `Carbonite.Query.changes/2` function constructs an `Ecto.Query` from a schema struct, loading all changes stored for the given source record.
 
@@ -236,7 +239,7 @@ To bypass the capture trigger, Carbonite's trigger configuration provides a togg
 
 As a result, you have two options:
 
-1. Leave the `mode` at the default value of `:capture` and *turn off* capturing as needed by switching to "override mode". This means for every test case where you do not care about change capturing, you explicitly disable the trigger before any database calls; for instance, in a ExUnit setup block. This approach has the benefit that you still capture all changes by default, and can't miss to test a code path that (in production) would require a `Carbonite.Transaction`. It is, however, still pretty expensive at ~1 additional SQL call per test case.
+1. Leave the `mode` at the default value of `:capture` and *turn off* capturing as needed by switching to "override mode". This means for every test case where you do not care about change capturing, you explicitly disable the trigger before any database calls; for instance, in an ExUnit setup block. This approach has the benefit that you still capture all changes by default, and can't miss to test a code path that (in production) would require a `Carbonite.Transaction`. It is, however, still pretty expensive at ~1 additional SQL call per test case.
 2. Set the `mode` to `:ignore` on all triggers in your `:test` environment and instead selectively *turn on*  capturing in test cases where you want to assert on the captured data. For instance, you can set the trigger mode in your migration based on the Mix environment. This approach is cheaper as it does not require any action in your tests by default. Yet you should make sure that you test all code paths that do mutate change-captured tables, in order to assert that each of these inserts a transaction as well.
 
 The following code snippet illustrates the second approach:
@@ -270,11 +273,19 @@ defmodule MyApp.CarboniteHelpers do
 end
 
 # test/some_test.exs
-def SomeTest do
-  use MyApp.DataCase
-  import MyApp.CarboniteHelpers
-
+describe "my_operation/0"
   setup [:carbonite_override_mode]
+
+  test "auditing" do
+    my_operation()
+
+    current_transaction_meta =
+      Carbonite.Query.current_transaction()
+      |> MyApp.Repo.one!()
+      |> Map.fetch(:meta)
+
+    assert current_transaction_meta == %{"type" => "some_operation"}
+  end
 end
 ```
 
