@@ -20,6 +20,13 @@ defmodule CaptureTest do
     query!("INSERT INTO rabbits (name, age) VALUES ('Jack', 99);")
   end
 
+  defp upsert_jack(new_name, do_clause) do
+    query!("""
+    INSERT INTO rabbits (id, name) VALUES (#{last_rabbit_id()}, '#{new_name}')
+    ON CONFLICT (id) DO #{do_clause}
+    """)
+  end
+
   defp select_changes do
     "SELECT * FROM carbonite_default.changes;"
     |> query!()
@@ -80,6 +87,53 @@ defmodule CaptureTest do
                  "changed" => [],
                  "data" => %{"id" => _, "name" => "Jack"}
                },
+               %{
+                 "op" => "update",
+                 "changed" => ["name"],
+                 "data" => %{"id" => _, "name" => "Jane"}
+               }
+             ] = select_changes()
+    end
+
+    test "UPDATEs on tables are not tracked when data remains the same" do
+      TestRepo.transaction(fn ->
+        insert_transaction()
+        insert_jack()
+        query!("UPDATE rabbits SET name = 'Jack';")
+      end)
+
+      assert [%{"op" => "insert"}] = select_changes()
+    end
+
+    test "INSERT ON CONFLICT NOTHING is not tracked" do
+      TestRepo.transaction(fn ->
+        insert_transaction()
+        insert_jack()
+        upsert_jack("Jack", "NOTHING")
+      end)
+
+      assert [%{"op" => "insert"}] = select_changes()
+    end
+
+    test "INSERT ON CONFLICT SET ... is not tracked when data remains the same" do
+      TestRepo.transaction(fn ->
+        insert_transaction()
+        insert_jack()
+        upsert_jack("Jack", "UPDATE SET name = excluded.name;")
+      end)
+
+      assert [%{"op" => "insert"}] = select_changes()
+    end
+
+    test "INSERT ON CONFLICT SET ... is tracked when data is changed" do
+      TestRepo.transaction(fn ->
+        insert_transaction()
+        insert_jack()
+        upsert_jack("Jane", "UPDATE SET name = excluded.name;")
+      end)
+
+      assert [
+               %{"op" => "insert"},
                %{
                  "op" => "update",
                  "changed" => ["name"],
@@ -162,6 +216,30 @@ defmodule CaptureTest do
       assert [%{"table_pk" => nil}] = select_changes()
     end
 
+    test "a friendly error is raised when transaction is not inserted or is inserted too late" do
+      msg =
+        "ERROR 23503 (foreign_key_violation) INSERT on table public.rabbits " <>
+          "without prior INSERT into carbonite_default.transactions"
+
+      assert_raise Postgrex.Error, msg, fn ->
+        TestRepo.transaction(&insert_jack/0)
+      end
+    end
+
+    test "a (not quite as) friendly error is raised when transaction is inserted twice" do
+      TestRepo.transaction(fn ->
+        insert_transaction()
+
+        assert_raise Postgrex.Error,
+                     ~r/duplicate key value violates unique constraint "transactions_pkey"/,
+                     fn ->
+                       insert_transaction()
+                     end
+      end)
+    end
+  end
+
+  describe "default mode / override mode" do
     test "override mode reverses the default mode" do
       TestRepo.transaction(fn ->
         query!("""
@@ -186,28 +264,6 @@ defmodule CaptureTest do
       end)
 
       assert select_changes() == []
-    end
-
-    test "a friendly error is raised when transaction is not inserted or is inserted too late" do
-      msg =
-        "ERROR 23503 (foreign_key_violation) INSERT on table public.rabbits " <>
-          "without prior INSERT into carbonite_default.transactions"
-
-      assert_raise Postgrex.Error, msg, fn ->
-        TestRepo.transaction(&insert_jack/0)
-      end
-    end
-
-    test "a (not quite as) friendly error is raised when transaction is inserted twice" do
-      TestRepo.transaction(fn ->
-        insert_transaction()
-
-        assert_raise Postgrex.Error,
-                     ~r/duplicate key value violates unique constraint "transactions_pkey"/,
-                     fn ->
-                       insert_transaction()
-                     end
-      end)
     end
   end
 
