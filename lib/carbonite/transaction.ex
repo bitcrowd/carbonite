@@ -17,8 +17,10 @@ defmodule Carbonite.Transaction do
 
   @type meta :: map()
 
+  @type id :: non_neg_integer()
+
   @type t :: %__MODULE__{
-          id: non_neg_integer(),
+          id: id(),
           meta: meta(),
           processed_at: DateTime.t(),
           inserted_at: DateTime.t(),

@@ -20,8 +20,10 @@ defmodule Carbonite.Change do
   @primary_key false
   @timestamps_opts [type: :utc_datetime_usec]
 
+  @type id :: non_neg_integer()
+
   @type t :: %__MODULE__{
-          id: non_neg_integer(),
+          id: id(),
           op: :insert | :update | :delete,
           table_prefix: String.t(),
           table_name: String.t(),
