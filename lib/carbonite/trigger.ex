@@ -12,10 +12,11 @@ defmodule Carbonite.Trigger do
   @primary_key {:id, :id, autogenerate: true}
   @timestamps_opts [type: :utc_datetime_usec]
 
+  @type id :: non_neg_integer()
   @type mode :: :capture | :ignore
 
   @type t :: %__MODULE__{
-          id: non_neg_integer(),
+          id: id(),
           table_name: String.t(),
           table_prefix: String.t(),
           primary_key_columns: [String.t()],
