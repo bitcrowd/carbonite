@@ -47,6 +47,18 @@ defmodule Carbonite.QueryTest do
 
       assert [%Transaction{changes: []} | _] = TestRepo.all(Query.transactions(preload: true))
     end
+
+    test "can use atom as prefix" do
+      prefix =
+        Carbonite.default_prefix()
+        |> String.to_atom()
+
+      result =
+        Query.transactions(carbonite_prefix: prefix)
+        |> TestRepo.all()
+
+      assert length(result) == 3
+    end
   end
 
   describe "current_transaction/2" do

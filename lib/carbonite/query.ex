@@ -41,7 +41,7 @@ defmodule Carbonite.Query do
   @spec transactions() :: Ecto.Query.t()
   @spec transactions([transactions_option()]) :: Ecto.Query.t()
   def transactions(opts \\ []) do
-    carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
+    carbonite_prefix = get_carbonite_prefix(opts)
 
     from(t in Transaction)
     |> put_query_prefix(carbonite_prefix)
@@ -83,7 +83,7 @@ defmodule Carbonite.Query do
   @spec current_transaction() :: Ecto.Query.t()
   @spec current_transaction([current_transaction_option()]) :: Ecto.Query.t()
   def current_transaction(opts \\ []) do
-    carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
+    carbonite_prefix = get_carbonite_prefix(opts)
 
     from(t in Transaction, where: t.id == fragment("pg_current_xact_id()"))
     |> put_query_prefix(carbonite_prefix)
@@ -118,7 +118,7 @@ defmodule Carbonite.Query do
   @spec changes(record :: Ecto.Schema.t()) :: Ecto.Query.t()
   @spec changes(record :: Ecto.Schema.t(), [changes_option()]) :: Ecto.Query.t()
   def changes(%schema{__meta__: %Ecto.Schema.Metadata{}} = record, opts \\ []) do
-    carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
+    carbonite_prefix = get_carbonite_prefix(opts)
 
     table_prefix =
       Keyword.get_lazy(opts, :table_prefix, fn ->
@@ -147,5 +147,11 @@ defmodule Carbonite.Query do
       true -> preload(queryable, ^default)
       preload -> preload(queryable, ^preload)
     end
+  end
+
+  defp get_carbonite_prefix(opts) do
+    opts
+    |> Keyword.get(:carbonite_prefix, default_prefix())
+    |> to_string()
   end
 end
