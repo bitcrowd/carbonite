@@ -7,9 +7,11 @@
 * Migration versioning (explicit for now)
 * `Carbonite.Migrations.put_trigger_option/4` to ensure old migrations continue to work
 * Mix task for generating the "initial" migration
+* Add top-level API with repo params (for `override_mode` and `insert_transaction`)
 
 ### Changed
 
+* Remove `Carbonite.Multi.override_mode/2`
 * Made all prefix options binary-only (no atom) as `Ecto.Query.put_query_prefix/2` only accepts strings
 * Aligned remaining `:prefix` options in `Carbonite.Outbox` to be called `:carbonite_prefix` like the others
 * `Carbonite.Migrations.install_schema/1` is now `Carbonite.Migrations.up/2`, likewise `drop_schema`/`drop_tables`, etc.
