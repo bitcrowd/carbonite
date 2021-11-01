@@ -34,7 +34,8 @@ defmodule Carbonite.MixProject do
         extras: ["LICENSE", "README.md", "CHANGELOG.md": [title: "Changelog"]],
         source_ref: "v#{@version}",
         source_url: "https://github.com/bitcrowd/carbonite",
-        formatters: ["html"]
+        formatters: ["html"],
+        skip_undefined_reference_warnings_on: ["CHANGELOG.md"]
       ]
     ]
   end
@@ -62,7 +63,7 @@ defmodule Carbonite.MixProject do
       {:postgrex, "~> 0.15 and >= 0.15.11"},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.24.1", only: [:dev], runtime: false},
+      {:ex_doc, "> 0.0.0", only: [:dev], runtime: false},
       # Jason is an optional dependency of Postgrex.
       {:jason, "~> 1.2", only: [:dev, :test]},
       {:junit_formatter, "~> 3.3", only: [:test]}

@@ -82,90 +82,117 @@ Consequently, much of Carbonite's logic lives in database functions and triggers
 
 ---
 
-ℹ️ &ensp;**Trigger vs. Write-Ahead-Log**
+<h4>ℹ️ &ensp;Trigger vs. Write-Ahead-Log</h4>
 
 Existing solutions for CDC on top of a PostgreSQL database (e.g. [Debezium](https://debezium.io/)) often tail the [Write-Ahead-Log](https://www.postgresql.org/docs/13/wal-intro.html) instead of using database logic & triggers to create change records. While this is likely more performant than using triggers, it makes it difficult to correlate changes on a transaction level as Carbonite does, and has different consistency guarantees. Carbonite makes this trade-off in favour of simplicity and universality. You should be able to run Carbonite's migrations on any hosted PostgreSQL instance without the need to tweak its configuration or install custom extensions before.
 
+## Database setup
 
-## Installing the schema & triggers
+### Creating the initial migration
 
-The following migration installs Carbonite into its "default prefix", a PostgreSQL _schema_ aptly called `carbonite_default`, and installs the change capture trigger for an exemplary table called `rabbits` which lives in the `public` schema. In a real-world scenario, you will most likely want to install the trigger for a set of tables and optionally split the audit trail into multiple partitions.
+Carbonite contains a Mix task that generates the initial migration for you. Please open the generated file and edit it according to your needs.
 
 See `Carbonite.Migrations` for more information on migrations.
 
 ```sh
-mix ecto.gen.migration InstallCarbonite
+mix carbonite.gen.initial_migration -r MyApp.Repo
 ```
+
+The final migration should look something like this:
 
 ```elixir
 # priv/repo/migrations/20210704201534_install_carbonite.exs
-
 defmodule MyApp.Repo.Migrations.InstallCarbonite do
   use Ecto.Migration
 
   def up do
-    # Creates carbonite_default schema and tables.
-    Carbonite.Migrations.install_schema()
+    Carbonite.Migrations.up(1)
+    Carbonite.Migrations.up(2)
 
     # For each table that you want to capture changes of, you need to install the trigger.
-    Carbonite.Migrations.install_trigger(:rabbits)
+    Carbonite.Migrations.create_trigger(:rabbits)
   end
 
   def down do
     # Remove all triggers before dropping the schema.
     Carbonite.Migrations.drop_trigger(:rabbits)
 
-    # Drop the schema & tables.
-    Carbonite.Migrations.drop_schema()
+    # Drop the Carbonite tables.
+    Carbonite.Migrations.down(2)
+    Carbonite.Migrations.down(1)
   end
 end
 ```
+
+### Updates
+
+When a new Carbonite version is released, it may contain updates to the database schema. As these are announced in the [Changelog](CHANGELOG.md), you each time need to create a migration in your host application like the following. Applying multiple Carbonite migrations in a single host migration is fine.
+
+```elixir
+# priv/repo/migrations/20210704201534_update_carbonite.exs
+defmodule MyApp.Repo.Migrations.UpdateCarbonite do
+  use Ecto.Migration
+
+  def up do
+    Carbonite.Migrations.up(3)
+  end
+
+  def down do
+    Carbonite.Migrations.down(3)
+  end
+end
+```
+
+Note that for each of your Carbonite "partitions" (see below), you need to run each Carbonite migration.
+
+### Trigger configuration
+
+The behaviour of the capture trigger is customizable per table by manipulating the settings in the `triggers` table. Often you will want to update these settings within a migration, as well, which is why Carbonite provides the small helper function `Carbonite.Migrations.put_trigger_config/4` that updates the settings using plain SQL statements.
 
 #### Primary Key Columns
 
 To speed up version lookups for a specific record, Carbonite copies its primary key(s) to the `table_pk` column of the `changes` table. The table keeps an index on this column together with the table prefix and name.
 
-By default, Carbonite will try to copy the `:id` column of the source table. If your table does not have a primary key, has a primary key with a different name, or has a composite primary key, you can override this using the `primary_key_columns` option of `Carbonite.Migrations.install_trigger/2` and `Carbonite.Migrations.configure_trigger/2`.
+By default, Carbonite will try to copy the `:id` column of the source table. If your table does not have a primary key, has a primary key with a different name, or has a composite primary key, you can override this using the `primary_key_columns` option.
 
 ```elixir
 # Disable PK copying
-Carbonite.Migrations.install_trigger(:rabbits, primary_key_columns: [])
+Carbonite.Migrations.put_trigger_config(:rabbits, :primary_key_columns, [])
 
 # Different name
-Carbonite.Migrations.install_trigger(:rabbits, primary_key_columns: ["identifier"])
+Carbonite.Migrations.put_trigger_config(:rabbits, :primary_key_columns, ["identifier"])
 
 # Composite PK
-Carbonite.Migrations.install_trigger(:rabbits, primary_key_columns: ["house", "apartment_no"])
+Carbonite.Migrations.put_trigger_config(:rabbits, :primary_key_columns, ["house", "apartment_no"])
 ```
 
 Since the `changes` table keeps versions of a multitude of different source tables, primary keys are first cast to string (the `table_pk` column has type `VARCHAR[]`). For composite primary keys, set the `primary_key_columns` option to an array as shown above. Each component of a compound primary key will be cast to string before the components are joined into the array.
 
-#### Excluded  and Filtered Columns
+#### Excluded and Filtered Columns
 
 In case your table contains sensitive data or data otherwise undesirable for change capturing, you can exclude columns using the `excluded_columns` option. Excluded columns will not appear in the captured data. If an `UPDATE` on a table solely touches excluded columns, the entire `UPDATE` will not be recorded.
 
 ```elixir
-Carbonite.Migrations.install_trigger(:rabbits, excluded_columns: ["age"])
+Carbonite.Migrations.put_trigger_config(:rabbits, :excluded_columns, ["age"])
 ```
 
 If you still want to capture changes to a column (in the `changed` field), but don't need the exact data, you can make it a "filtered" column. These columns appear as `[FILTERED]` in the `data` field.
 
 ```elixir
-Carbonite.Migrations.install_trigger(:rabbits, filtered_columns: ["age"])
+Carbonite.Migrations.put_trigger_config(:rabbits, :filtered_columns, ["age"])
 ```
 
-#### Partitioning the Audit Trail
+### Partitioning the Audit Trail
 
 Carbonite can install its tables into multiple database schemas using the `prefix` option. You can use this feature to "partition" your captured data.
 
 ```elixir
-Carbonite.Migrations.install_schema(carbonite_prefix: "carbonite_lagomorpha")
-Carbonite.Migrations.install_trigger(:rabbits, carbonite_prefix: "carbonite_lagomorpha")
+Carbonite.Migrations.up(1, carbonite_prefix: "carbonite_lagomorpha")
+Carbonite.Migrations.create_trigger(:rabbits, carbonite_prefix: "carbonite_lagomorpha")
 ```
 
-If desired, tables can participate in multiple partitions by adding multiple triggers on to them.
+If desired, tables can participate in multiple partitions by adding multiple triggers on to them. Keep in mind that each partition will need to be processed and purged separately, resulting in multiple streams of change data in your external storage.
 
-Keep in mind that each partition will need to be processed and purged separately, resulting in multiple streams of change data in your external storage.
 
 ## Inserting a `Transaction`
 
@@ -257,7 +284,8 @@ defmodule MyApp.Repo.Migrations.InstallCarbonite do
 
   def up do
     # ...
-    Carbonite.Migrations.install_trigger(:rabbits, mode: @mode)
+    Carbonite.Migrations.create_trigger(:rabbits)
+    Carbonite.Migrations.put_trigger_config(:rabbits, :mode, @mode)
   end
 end
 
