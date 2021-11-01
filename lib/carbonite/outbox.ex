@@ -18,14 +18,14 @@ defmodule Carbonite.Outbox do
   @default_batch_size 20
   @default_min_age 300
 
-  @type prefix :: binary() | atom()
+  @type prefix :: binary()
 
   @type process_fun :: (repo :: module(), Transaction.t() -> {:ok, any()} | {:error, any()})
 
   @type process_option ::
           {:batch_size, non_neg_integer()}
           | {:min_age, non_neg_integer()}
-          | {:prefix, prefix()}
+          | {:carbonite_prefix, prefix()}
 
   @doc """
   Builds an `Ecto.Multi` that can be used to load `Carbonite.Transaction` records from database
@@ -37,7 +37,7 @@ defmodule Carbonite.Outbox do
 
   * `batch_size` is the size of records to load in one chunk, defaults to 20
   * `min_age` is the minimum age of a record, defaults to 300 seconds (see below)
-  * `prefix` is the Carbonite schema, defaults to `"carbonite_default"`
+  * `carbonite_prefix` is the Carbonite schema, defaults to `"carbonite_default"`
 
   ## Long running transactions & insertion order
 
@@ -55,20 +55,24 @@ defmodule Carbonite.Outbox do
     Multi.new()
     |> Multi.put(:batch_size, Keyword.get(opts, :batch_size, @default_batch_size))
     |> Multi.put(:min_age, Keyword.get(opts, :min_age, @default_min_age))
-    |> Multi.put(:prefix, Keyword.get(opts, :prefix, default_prefix()))
+    |> Multi.put(:carbonite_prefix, Keyword.get(opts, :carbonite_prefix, default_prefix()))
     |> Multi.put(:process_fun, process_fun)
     |> Multi.run(:advisory_xact_lock, &acquire_advisory_xact_lock/2)
     |> Multi.run(:batch, &load_batch/2)
     |> Multi.merge(&reduce_batch/1)
   end
 
-  defp acquire_advisory_xact_lock(repo, %{prefix: prefix}) do
-    <<key::signed-integer-64, _rest::binary>> = :crypto.hash(:sha, to_string(prefix))
+  defp acquire_advisory_xact_lock(repo, %{carbonite_prefix: carbonite_prefix}) do
+    <<key::signed-integer-64, _rest::binary>> = :crypto.hash(:sha, to_string(carbonite_prefix))
 
     {:ok, query!(repo, "SELECT pg_advisory_xact_lock($1);", [key])}
   end
 
-  defp load_batch(repo, %{batch_size: batch_size, min_age: min_age, prefix: prefix}) do
+  defp load_batch(repo, %{
+         batch_size: batch_size,
+         min_age: min_age,
+         carbonite_prefix: carbonite_prefix
+       }) do
     min_inserted_at = DateTime.add(DateTime.utc_now(), -1 * min_age, :second)
 
     {:ok,
@@ -78,7 +82,7 @@ defmodule Carbonite.Outbox do
        limit: ^batch_size,
        preload: [:changes]
      )
-     |> repo.all(prefix: prefix)}
+     |> repo.all(prefix: carbonite_prefix)}
   end
 
   defp reduce_batch(%{batch: batch, process_fun: process_fun}) do
@@ -94,7 +98,7 @@ defmodule Carbonite.Outbox do
     end)
   end
 
-  @type purge_option :: {:prefix, prefix()}
+  @type purge_option :: {:carbonite_prefix, prefix()}
 
   @doc """
   Builds an `Ecto.Multi` that can be used to delete `Carbonite.Transaction` records and their
@@ -103,16 +107,16 @@ defmodule Carbonite.Outbox do
 
   ## Options
 
-  * `prefix` is the Carbonite schema, defaults to `"carbonite_default"`
+  * `carbonite_prefix` is the Carbonite schema, defaults to `"carbonite_default"`
   """
   @spec purge() :: Ecto.Multi.t()
   @spec purge([purge_option()]) :: Ecto.Multi.t()
   def purge(opts \\ []) do
     Multi.new()
-    |> Multi.put(:prefix, Keyword.get(opts, :prefix, default_prefix()))
-    |> Multi.run(:purged, fn repo, %{prefix: prefix} ->
+    |> Multi.put(:carbonite_prefix, Keyword.get(opts, :carbonite_prefix, default_prefix()))
+    |> Multi.run(:purged, fn repo, %{carbonite_prefix: carbonite_prefix} ->
       from(t in Transaction, where: not is_nil(t.processed_at))
-      |> repo.delete_all(prefix: prefix)
+      |> repo.delete_all(prefix: carbonite_prefix)
     end)
   end
 end

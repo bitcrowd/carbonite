@@ -1,3 +1,10 @@
+## Unreleased
+
+### Changed
+
+* Made all prefix options binary-only (no atom) as `Ecto.Query.put_query_prefix/2` only accepts strings
+* Aligned remaining `:prefix` options in `Carbonite.Outbox` to be called `:carbonite_prefix` like the others
+
 ## [0.3.1] - 2021-10-23
 
 ### Added

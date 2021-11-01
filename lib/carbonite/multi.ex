@@ -12,7 +12,7 @@ defmodule Carbonite.Multi do
   alias Carbonite.{Transaction, Trigger}
   alias Ecto.Multi
 
-  @type prefix :: binary() | atom()
+  @type prefix :: binary()
   @type params :: map()
 
   @type insert_transaction_option :: {:carbonite_prefix, prefix()} | {:params, map()}

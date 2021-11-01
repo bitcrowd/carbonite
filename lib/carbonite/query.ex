@@ -11,7 +11,7 @@ defmodule Carbonite.Query do
   import Carbonite, only: [default_prefix: 0]
   alias Carbonite.{Change, Transaction}
 
-  @type prefix :: binary() | atom()
+  @type prefix :: binary()
   @type preload :: atom() | [atom()] | true
 
   @type transactions_option :: {:carbonite_prefix, prefix()} | {:preload, preload()}
