@@ -10,7 +10,7 @@ defmodule Carbonite.Migrations do
   use Ecto.Migration
   import Carbonite, only: [default_prefix: 0]
 
-  @type prefix :: binary() | atom()
+  @type prefix :: binary()
   @type table_name :: binary() | atom()
   @type column_name :: binary()
 
