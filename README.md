@@ -240,7 +240,7 @@ Of course, persisting the audit trail is not an end in itself. At some point you
 
 ### Fetching transactions
 
-The `Carbonite.Query.transactions/1` function constructs an `Ecto.Query` for loading `Carbonite.Transaction` records from the database, optionally preloading their included changes. The query can be further refined to limit the result set.
+The `Carbonite.Query.transactions/1` function constructs an `Ecto.Query` for loading `t:Carbonite.Transaction.t/0` records from the database, optionally preloading their included changes. The query can be further refined to limit the result set.
 
 ```elixir
 Carbonite.Query.transactions()
@@ -250,12 +250,93 @@ Carbonite.Query.transactions()
 
 ### Fetching changes of invididual records
 
-The `Carbonite.Query.changes/2` function constructs an `Ecto.Query` from a schema struct, loading all changes stored for the given source record.
+The `Carbonite.Query.changes/2` function constructs an `t:Ecto.Query.t/0` from a schema struct, loading all changes stored for the given source record.
 
 ```elixir
 %MyApp.Rabbit{id: 1}
 |> Carbonite.Query.changes()
 |> MyApp.Repo.all()
+```
+
+## Processing data
+
+Storing event series in a relational database comes with the usual scaling issues, so at some point you may find it necessary to offload the captured data to an external data store. For processing, exporting, and later purging the captured transactions, Carbonite includes what is called an "Event Outbox", or in fact as many of those as you need.
+
+Essentially, a `Carbonite.Outbox` is a named cursor on the ordered list of transactions stored in an audit trail. Each outbox advances by calling a user-supplied processor function on a batch of transactions. The batch can be filtered and limited in size, but is always ordered ascending by the transaction's `id` attribute, so transactions are processed *roughly* in order of their insertion (see below for a discussion on caveats of this solution). When a batch is processed, the outbox remembers its last position - the last transaction that has been processed - so the following call to the outbox can continue where the last has left of. Besides, the outbox persists a user-definable "memo", an arbitrary map that allows to feed output of the previous processor run into the next one.
+
+### Creating an Outbox
+
+Create an outbox within a migration:
+
+```elixir
+Carbonite.Migrations.create_outbox("rabbit_holes")
+```
+
+You can create more than one outbox if you need multiple processors, e.g. for multiple target systems for your data.
+
+### Processing
+
+You can process an outbox by calling `Carbonite.process/3` with the outbox name and a processor callback function.
+
+```elixir
+Carbonite.process(MyApp.Repo, "rabbit_holes", fn transaction, _memo ->
+  send_to_external_database(transaction)
+  :cont
+end)
+```
+
+In practise, you will almost always want to run this within an asynchronous job processor. The following shows an exemplary [Oban](https://github.com/sorentwo/oban) worker:
+
+
+```elixir
+# config/config.exs
+config :my_app, :oban,
+  repo: MyApp.Repo,
+  plugins: [
+    {Oban.Plugins.Cron, crontab: [
+      {"0 0 * * *", MyApp.PeriodicOutboxWorker, args: %{outbox: "rabbit_holes"}}
+    ]
+  ]
+
+# lib/my_app/periodic_outbox_worker.ex
+defmodule MyApp.PeriodicOutboxWorker do
+  # Worker is scheduled every 24h, let's make it unique for 12h to be sure.
+  # Retry is disabled, the next scheduled run will pick up failed outboxes.
+  use Oban.Worker, queue: :default, unique: [period: 43_200], retry: false
+
+  def perform(%Oban.Job{args: %{"outbox" => outbox}}) do
+    Carbonite.process(MyApp.Repo, outbox, fn transaction, _memo ->
+      send_to_external_database(transaction)
+      :cont
+    end)
+  end
+end
+```
+
+<h4>⚠️&ensp;Transactionality & mutual exclusion</h4>
+
+As the outbox processor is likely to call external services as part of its work, `Carbonite.process/3` does not begin a transaction itself, and consequently does not acquire a lock on the outbox record. In other words, users have to ensure that they don't accidentally run `Carbonite.process/3` for the same outbox concurrently, for instance making use of uniqueness options of the used job processor (e.g. [`unique` in Oban](https://hexdocs.pm/oban/Oban.html#module-unique-jobs)).
+
+The absence of transactionality also means that any exception raised within the processor function will immediately abort the `Carbonite.process/3` call without writing the current outbox position to disk. As a result, transactions may be processed again in the next run. Please make sure your receiving system or database can handle duplicate messages.
+
+<h4>⚠️&ensp;Long running / parallel transactions and the outbox order</h4>
+
+When a `Carbonite.Transaction` record is created at the beginning of an operation in your application, it records the "current" transaction identifier in its `id` field. As PostgreSQL lazily allocates this number (*simplification*: when a transaction first modifies data), this `INSERT` statement is usually also when this number is pulled from its global sequence. The record in the `transactions` table becomes visible to other transactions when the current transaction is committed.
+
+A few observations can be made from this:
+
+* When ordered by their `id` field, the transactions will be roughly sorted by the time the corresponding operation was started, not when it was committed.
+* Two transactions running in parallel may be committed "out of order", i.e. the one with the larger `id` may be committed before the smaller `id` transaction if that has a longer runtime.
+
+The latter point is crucial: For instance, if two transactions with `id=1` and `id=2` run in parallel and `id=2` finishes before `id=1`, an outside viewer can already see `id=2` in the database before `id=1` is committed. If this outside viewer happens to be an outbox processing job, transaction with `id=1` might be skipped and never looked at again. To mitigate this issue, `Carbonite.process/3` has a `min_age` option which excludes transaction younger than a certain from the processing batch (5 minutes by default, increase this is you expect longer running transactions).
+
+### Purging
+
+Now that you have successfully exported your audit data, you may delete old transactions from the primary database. `Carbonite.purge/2` deletes records that have been processed by all existing outboxes.
+
+```elixir
+# Deletes records whose id field is less than the transaction_id on each outbox.
+Carbonite.purge(MyApp.Repo)
 ```
 
 ## Testing / Bypassing Carbonite
@@ -292,11 +373,15 @@ end
 # test/support/carbonite_helpers.exs
 defmodule MyApp.CarboniteHelpers do
   def carbonite_override_mode(_) do
-    Ecto.Multi.new()
-    |> Carbonite.Multi.override_mode()
-    |> MyApp.Repo.transaction()
+    Carbonite.override_mode(MyApp.Repo)
 
     :ok
+  end
+
+  def current_transaction_meta do
+    Carbonite.Query.current_transaction()
+    |> MyApp.Repo.one!()
+    |> Map.fetch(:meta)
   end
 end
 
@@ -307,12 +392,7 @@ describe "my_operation/0"
   test "auditing" do
     my_operation()
 
-    current_transaction_meta =
-      Carbonite.Query.current_transaction()
-      |> MyApp.Repo.one!()
-      |> Map.fetch(:meta)
-
-    assert current_transaction_meta == %{"type" => "some_operation"}
+    assert current_transaction_meta() == %{"type" => "some_operation"}
   end
 end
 ```

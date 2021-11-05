@@ -209,4 +209,60 @@ defmodule Carbonite.Migrations do
 
     :ok
   end
+
+  # ------------------------------- outbox setup -----------------------------------
+
+  @type outbox_name :: String.t()
+  @type outbox_option :: {:carbonite_prefix, prefix()}
+
+  @doc """
+  Inserts an outbox record into the database.
+
+  ## Options
+
+  * `carbonite_prefix` is the schema of the audit trail, defaults to `"carbonite_default"`
+  """
+  @doc since: "0.4.0"
+  @spec create_outbox(outbox_name()) :: :ok
+  @spec create_outbox(outbox_name(), [outbox_option()]) :: :ok
+  def create_outbox(outbox_name, opts \\ []) do
+    carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
+
+    """
+    INSERT INTO #{carbonite_prefix}.outboxes (
+      name,
+      inserted_at,
+      updated_at
+    ) VALUES (
+      '#{outbox_name}',
+      NOW(),
+      NOW()
+    );
+    """
+    |> squish_and_execute()
+
+    :ok
+  end
+
+  @doc """
+  Removes an outbox record.
+
+  ## Options
+
+  * `carbonite_prefix` is the schema of the audit trail, defaults to `"carbonite_default"`
+  """
+  @doc since: "0.4.0"
+  @spec drop_outbox(outbox_name()) :: :ok
+  @spec drop_outbox(outbox_name(), [outbox_option()]) :: :ok
+  def drop_outbox(outbox_name, opts \\ []) do
+    carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
+
+    """
+    DELETE FROM #{carbonite_prefix}.outboxes
+    WHERE name = '#{outbox_name}';
+    """
+    |> squish_and_execute()
+
+    :ok
+  end
 end

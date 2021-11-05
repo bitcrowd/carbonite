@@ -22,7 +22,6 @@ defmodule Carbonite.Transaction do
   @type t :: %__MODULE__{
           id: id(),
           meta: meta(),
-          processed_at: DateTime.t(),
           inserted_at: DateTime.t(),
           changes: Ecto.Association.NotLoaded.t() | [Carbonite.Change.t()]
         }
@@ -30,7 +29,6 @@ defmodule Carbonite.Transaction do
   schema "transactions" do
     field(:id, :integer, primary_key: true)
     field(:meta, :map, default: %{})
-    field(:processed_at, :utc_datetime_usec)
 
     timestamps(updated_at: false)
 

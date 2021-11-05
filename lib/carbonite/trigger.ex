@@ -21,6 +21,7 @@ defmodule Carbonite.Trigger do
           table_prefix: String.t(),
           primary_key_columns: [String.t()],
           excluded_columns: [String.t()],
+          filtered_columns: [String.t()],
           mode: mode(),
           override_transaction_id: nil | non_neg_integer(),
           inserted_at: DateTime.t(),
@@ -32,6 +33,7 @@ defmodule Carbonite.Trigger do
     field(:table_name, :string)
     field(:primary_key_columns, {:array, :string}, default: [])
     field(:excluded_columns, {:array, :string}, default: [])
+    field(:filtered_columns, {:array, :string}, default: [])
     field(:mode, Ecto.Enum, values: [:capture, :ignore])
     field(:override_transaction_id, :integer)
 
