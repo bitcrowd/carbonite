@@ -2,46 +2,31 @@
 
 **New migration patches:** 2, 3
 
-### How to upgrade
+### Switch to top-level API with `repo` param
 
-Create a new migration:
+* `Carbonite.override_mode/2` (gone from `Carbonite.Multi`)
+* `Carbonite.insert_transaction/3` (kept a wrapper in `Carbonite.Multi`)
+* `Carbonite.process/4` (previously `Carbonite.Outbox.process/3` with major changes)
+* `Carbonite.purge/2` (previously `Carbonite.Outbox.purge/1` with major changes)
 
-```elixir
-defmodule MyApp.Repo.Migrations.UpdateCarbonite do
-  use Ecto.Migration
+### Big outbox overhaul
 
-  def up do
-    Carbonite.Migrations.up(2)
-    Carbonite.Migrations.up(3)
-  end
+* Split into query / processing
+* Simplify processing
+* No more transaction
+* New capabilities: memo, halting
 
-  def down do
-    Carbonite.Migrations.up(3)
-    Carbonite.Migrations.up(2)
-  end
-end
-```
+### Migration versioning
 
-### Added
+* Explicit for now with `Carbonite.Migrations.up(non_neg_integer())`
+* `Carbonite.Migrations.install_schema/1` is now `Carbonite.Migrations.up/2`
+* `Carbonite.Migrations.put_trigger_option/4` to ensure old migrations continue to work
+* At the same time removed long configuration statement from `Carbonite.Migrations.install_trigger/1`, so this does not need to be versioned and continues to work
+* Mix task for generating the "initial" migration
 
-* Add top-level API with repo params (for `override_mode` and `insert_transaction`)
-* Big outbox overhaul
-  - Split into query / processing
-  - Simplify processing
-  - No more transaction
-  - New capabilities: memo, halting
-* Migration versioning (explicit for now)
-  - Explicit for now with `Carbonite.Migrations.up(non_neg_integer())`
-  - `Carbonite.Migrations.put_trigger_option/4` to ensure old migrations continue to work
-  - Mix task for generating the "initial" migration
+### Other Changes
 
-### Changed
-
-* Remove `Carbonite.Multi.override_mode/2`
 * Made all prefix options binary-only (no atom) as `Ecto.Query.put_query_prefix/2` only accepts strings
-* Aligned remaining `:prefix` options in `Carbonite.Outbox` to be called `:carbonite_prefix` like the others
-* `Carbonite.Migrations.install_schema/1` is now `Carbonite.Migrations.up/2`, likewise `drop_schema`/`drop_tables`, etc.
-* Removed long configuration statement from `Carbonite.Migrations.install_trigger/1`, so this does not need to be versioned and continues to work
 
 ## [0.3.1] - 2021-10-23
 
