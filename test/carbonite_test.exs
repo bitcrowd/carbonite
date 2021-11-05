@@ -58,34 +58,56 @@ defmodule CarboniteTest do
   describe "process/4" do
     setup [:insert_past_transactions]
 
-    test "passes the transactions and the memo to the process func" do
+    test "remembers the last processed position" do
+      process(TestRepo, "rabbits", fn _tx, _memo ->
+        :cont
+      end)
+
+      %Outbox{} = outbox = get_rabbits_outbox()
+      assert outbox.last_transaction_id == 300_000
+      assert outbox.memo == %{}
+    end
+
+    test "reduces the batch to the memo and remembers it" do
       process(TestRepo, "rabbits", fn tx, memo ->
         expected_id = Map.get(memo, "next_id", 100_000)
 
         assert tx.id == expected_id
 
-        Map.put(memo, "next_id", expected_id + 100_000)
-      end)
-    end
-
-    test "remembers the last processed position and the memo" do
-      process(TestRepo, "rabbits", fn tx, memo ->
-        sum = Map.get(memo, "sum", 0)
-        Map.put(memo, "sum", sum + tx.id)
+        {:cont, memo: Map.put(memo, "next_id", expected_id + 100_000)}
       end)
 
       %Outbox{} = outbox = get_rabbits_outbox()
-
       assert outbox.last_transaction_id == 300_000
-      assert outbox.memo["sum"] == 600_000
+      assert outbox.memo == %{"next_id" => 400_000}
+    end
+
+    test "can be stopped and discards the last transaction" do
+      process(TestRepo, "rabbits", fn _tx, _memo ->
+        {:halt, memo: :ignored}
+      end)
+
+      %Outbox{} = outbox = get_rabbits_outbox()
+      assert outbox.last_transaction_id == 0
+      assert outbox.memo == %{}
+    end
+
+    test "can be stopped without discarding the last transaction" do
+      process(TestRepo, "rabbits", fn _tx, _memo ->
+        {:halt, discard: false, memo: %{"some" => "data"}}
+      end)
+
+      %Outbox{} = outbox = get_rabbits_outbox()
+      assert outbox.last_transaction_id == 100_000
+      assert outbox.memo == %{"some" => "data"}
     end
 
     test "starts at the last processed position (+1)" do
       update_rabbits_outbox(%{last_transaction_id: 200_000})
 
-      process(TestRepo, "rabbits", fn tx, memo ->
+      process(TestRepo, "rabbits", fn tx, _memo ->
         send(self(), tx.id)
-        memo
+        :cont
       end)
 
       refute_received 100_000
@@ -94,9 +116,9 @@ defmodule CarboniteTest do
     end
 
     test "passes down batch query options" do
-      process(TestRepo, "rabbits", [min_age: 9_000], fn tx, memo ->
+      process(TestRepo, "rabbits", [min_age: 9_000], fn tx, _memo ->
         send(self(), tx.id)
-        memo
+        :cont
       end)
 
       assert_received 100_000
@@ -111,9 +133,9 @@ defmodule CarboniteTest do
         where(query, [t], t.inserted_at < ^max_inserted_at)
       end
 
-      process(TestRepo, "rabbits", [batch_filter: batch_filter], fn tx, memo ->
+      process(TestRepo, "rabbits", [batch_filter: batch_filter], fn tx, _memo ->
         send(self(), tx.id)
-        memo
+        :cont
       end)
 
       assert_received 100_000

@@ -1,13 +1,39 @@
 ## Unreleased
 
-**New migration patches:** 2
+**New migration patches:** 2, 3
 
-## Added
+### How to upgrade
 
-* Migration versioning (explicit for now)
-* `Carbonite.Migrations.put_trigger_option/4` to ensure old migrations continue to work
-* Mix task for generating the "initial" migration
+Create a new migration:
+
+```elixir
+defmodule MyApp.Repo.Migrations.UpdateCarbonite do
+  use Ecto.Migration
+
+  def up do
+    Carbonite.Migrations.up(2)
+    Carbonite.Migrations.up(3)
+  end
+
+  def down do
+    Carbonite.Migrations.up(3)
+    Carbonite.Migrations.up(2)
+  end
+end
+```
+
+### Added
+
 * Add top-level API with repo params (for `override_mode` and `insert_transaction`)
+* Big outbox overhaul
+  - Split into query / processing
+  - Simplify processing
+  - No more transaction
+  - New capabilities: memo, halting
+* Migration versioning (explicit for now)
+  - Explicit for now with `Carbonite.Migrations.up(non_neg_integer())`
+  - `Carbonite.Migrations.put_trigger_option/4` to ensure old migrations continue to work
+  - Mix task for generating the "initial" migration
 
 ### Changed
 

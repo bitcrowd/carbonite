@@ -108,18 +108,81 @@ defmodule Carbonite do
   @type process_option ::
           Carbonite.Query.outbox_queue_option()
           | {:batch_filter, (Ecto.Query.t() -> Ecto.Query.t())}
-  @type process_func :: (Transaction.t(), Outbox.memo() -> Outbox.memo())
+
+  @type process_func_option :: {:memo, Outbox.memo()} | {:discard_last, boolean()}
+
+  @typedoc """
+  This type defines the callback function signature for `Carbonite.process/3`.
+
+  The processor function receives the current transaction and the memo of the last function
+  application, and must return one of
+
+  * `:cont` - continue processing
+  * `:halt` - stop processing after this transaction
+  * `{:cont | :halt, opts}` - cont/halt and set some options
+
+  ## Options
+
+  Returned options can be:
+
+  * `memo` - memo map to carry to the next function application, defaults to previous memo
+  * `discard` - boolean indicating whether the last transaction was processed successfully,
+                defaults to true (if true, previous memo is reinstated)
+  """
+  @type process_func ::
+          (Transaction.t(), Outbox.memo() ->
+             :cont | :halt | {:cont | :halt, [process_func_option()]})
 
   @doc """
   Processes an outbox queue.
 
   See `Carbonite.Query.outbox_queue/2` for query options.
 
+  ## Examples
+
+      Carbonite.process(MyApp.Repo, "rabbit_holes", fn transaction, _memo ->
+        # The transaction has its changes preloaded.
+        transaction
+        |> serialize()
+        |> send_to_external_database()
+
+        :cont
+      end)
+
+  ### Memo passing
+
+  The `memo` is useful to carry data between each processor application. Let's say you wanted to
+  generate a hashsum chain on your processed data:
+
+      Carbonite.process(MyApp.Repo, "rabbit_holes", fn transaction, %{"checksum" => checksum} ->
+        {payload, checksum} = serialize_and_hash(transaction, checksum)
+
+        send_to_external_database(payload)
+
+        {:cont, memo: %{"checksum" => checksum}}
+      end)
+
+  ### Error handling
+
+  In case you run into an error midway into processing a batch, you may choose to halt processing
+  while remembering about the last processed transaction.
+
+      Carbonite.process(MyApp.Repo, "rabbit_holes", fn transaction, _memo ->
+        case send_to_external_database(transaction) do
+          :ok ->
+            :cont
+
+          {:error, _term} ->
+            :halt
+        end
+      end
+
   ## Parameters
 
   * `repo` - the Ecto repository
   * `outbox_name` - name of the outbox to process
   * `opts` - optional keyword list
+  * `process_func` - see `t:process_func/0` for details
 
   ## Options
 
@@ -157,12 +220,28 @@ defmodule Carbonite do
   defp process_batch(batch, outbox, process_func) do
     initial = Map.take(outbox, [:last_transaction_id, :memo])
 
-    Enum.reduce(batch, initial, fn transaction, acc ->
-      %{
-        last_transaction_id: transaction.id,
-        memo: process_func.(transaction, acc.memo)
-      }
+    Enum.reduce_while(batch, initial, fn transaction, acc ->
+      {cont_or_halt, opts} = process_transaction(transaction, acc.memo, process_func)
+
+      new_acc =
+        if cont_or_halt == :halt && Keyword.get(opts, :discard, true) do
+          acc
+        else
+          %{
+            last_transaction_id: transaction.id,
+            memo: Keyword.get(opts, :memo, acc.memo)
+          }
+        end
+
+      {cont_or_halt, new_acc}
     end)
+  end
+
+  defp process_transaction(transaction, memo, process_func) do
+    case process_func.(transaction, memo) do
+      cont_or_halt when is_atom(cont_or_halt) -> {cont_or_halt, []}
+      {cont_or_halt, opts} -> {cont_or_halt, opts}
+    end
   end
 
   @type purge_option :: Carbonite.Query.outbox_done_option()
