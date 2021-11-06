@@ -108,11 +108,13 @@ defmodule Carbonite.Migrations do
 
     """
     INSERT INTO #{carbonite_prefix}.triggers (
+      id,
       table_prefix,
       table_name,
       inserted_at,
       updated_at
     ) VALUES (
+      NEXTVAL('#{carbonite_prefix}.triggers_id_seq'),
       '#{table_prefix}',
       '#{table_name}',
       NOW(),
@@ -192,7 +194,7 @@ defmodule Carbonite.Migrations do
   end
 
   def put_trigger_config(table_name, :mode, value, opts) when value in [:capture, :ignore] do
-    do_put_trigger_config(table_name, :mode, value, opts)
+    do_put_trigger_config(table_name, :mode, "'#{value}'", opts)
   end
 
   defp do_put_trigger_config(table_name, field, value, opts) do

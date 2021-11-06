@@ -61,7 +61,9 @@ defmodule Carbonite.Migrations.V1 do
 
     execute("CREATE TYPE #{prefix}.change_op AS ENUM('insert', 'update', 'delete');")
 
-    create table("changes", prefix: prefix) do
+    create table("changes", primary_key: false, prefix: prefix) do
+      add(:id, :bigserial, null: false, primary_key: true)
+
       add(
         :transaction_id,
         references(:transactions,
@@ -88,7 +90,8 @@ defmodule Carbonite.Migrations.V1 do
 
     execute("CREATE TYPE #{prefix}.trigger_mode AS ENUM('capture', 'ignore');")
 
-    create table("triggers", prefix: prefix) do
+    create table("triggers", primary_key: false, prefix: prefix) do
+      add(:id, :bigserial, null: false, primary_key: true)
       add(:table_prefix, :string, null: false)
       add(:table_name, :string, null: false)
       add(:primary_key_columns, {:array, :string}, null: false)
