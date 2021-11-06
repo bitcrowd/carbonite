@@ -4,7 +4,7 @@
 
 ### Switch to top-level API with `repo` param
 
-* `Carbonite.override_mode/2` (gone from `Carbonite.Multi`)
+* `Carbonite.override_mode/2` (kept a wrapper in `Carbonite.Multi`)
 * `Carbonite.insert_transaction/3` (kept a wrapper in `Carbonite.Multi`)
 * `Carbonite.process/4` (previously `Carbonite.Outbox.process/3` with major changes)
 * `Carbonite.purge/2` (previously `Carbonite.Outbox.purge/1` with major changes)
