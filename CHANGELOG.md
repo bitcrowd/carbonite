@@ -26,6 +26,7 @@
 
 ### Other Changes
 
+* Optionally derive Jason.Encoder for `Carbonite.Transaction` and `Carbonite.Change`
 * Made all prefix options binary-only (no atom) as `Ecto.Query.put_query_prefix/2` only accepts strings
 
 ## [0.3.1] - 2021-10-23
