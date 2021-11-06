@@ -12,7 +12,7 @@ defmodule Carbonite.Multi do
   @type prefix :: binary()
   @type params :: map()
 
-  @type insert_transaction_option :: {:carbonite_prefix, prefix()}
+  @type prefix_option :: {:carbonite_prefix, prefix()}
 
   @doc """
   Adds an insert operation for a `Carbonite.Transaction` to an `Ecto.Multi`.
@@ -22,10 +22,24 @@ defmodule Carbonite.Multi do
   @doc since: "0.2.0"
   @spec insert_transaction(Multi.t()) :: Multi.t()
   @spec insert_transaction(Multi.t(), params()) :: Multi.t()
-  @spec insert_transaction(Multi.t(), params(), [insert_transaction_option()]) :: Multi.t()
+  @spec insert_transaction(Multi.t(), params(), [prefix_option()]) :: Multi.t()
   def insert_transaction(%Multi{} = multi, params \\ %{}, opts \\ []) do
     Multi.run(multi, :carbonite_transaction, fn repo, _state ->
       Carbonite.insert_transaction(repo, params, opts)
+    end)
+  end
+
+  @doc """
+  Sets the current transaction to "override mode" for all tables in the audit log.
+
+  See `Carbonite.override_mode/2` for options.
+  """
+  @doc since: "0.2.0"
+  @spec override_mode(Multi.t()) :: Multi.t()
+  @spec override_mode(Multi.t(), [prefix_option()]) :: Multi.t()
+  def override_mode(%Multi{} = multi, opts \\ []) do
+    Multi.run(multi, :carbonite_triggers, fn repo, _state ->
+      {:ok, Carbonite.override_mode(repo, opts)}
     end)
   end
 end
