@@ -7,7 +7,9 @@ defmodule Carbonite do
   @moduledoc @readme
              |> File.read!()
              |> String.split("<!-- MDOC -->")
-             |> Enum.fetch!(1)
+             |> Enum.drop(1)
+             |> Enum.take_every(2)
+             |> Enum.join("\n")
 
   @moduledoc since: "0.1.0"
 

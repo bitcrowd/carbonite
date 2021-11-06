@@ -21,6 +21,8 @@
   </a>
 </p>
 
+<!-- MDOC -->
+
 Carbonite makes it easy to create audit trails for tables in a PostgreSQL database and integrate them into an Elixir application.
 
 Carbonite implements the [Change-Data-Capture](https://en.wikipedia.org/wiki/Change_data_capture) pattern on top of a PostgreSQL database. It uses triggers to automatically record all changes applied to a database table in order to guarantee a complete audit trail of the contained data.
@@ -28,6 +30,8 @@ Carbonite implements the [Change-Data-Capture](https://en.wikipedia.org/wiki/Cha
 It is centered around the idea that the database transaction is the natural auditing unit of data mutation. Any mutation on a participating table requires the developer first to record the operation metadata within the same database transaction. The metadata record is associated to the table change records by a constraint.
 
 On top of its database layer, Carbonite provides an API allowing developers to effortlessly retrieve, process, and purge the audit trails within the Elixir application.
+
+<!-- MDOC -->
 
 ---
 
@@ -42,16 +46,41 @@ On top of its database layer, Carbonite provides an API allowing developers to e
   - No mutation without recorded `Change`
   - No `Change` without `Transaction`
 - Customizable audit metadata (per transaction)
-- Clear query-based interfaces to the audit trail
+- Clear query interfaces to the audit trail
 - Optional processing & purging logic following the Outbox pattern
 - Based on [Ecto](https://hex.pm/packages/ecto) and [Postgrex](https://hex.pm/packages/postgrex) with no further dependencies.
 - No configuration of PostgreSQL database needed
 
+<!-- MDOC -->
+
+## How it works
+
+Carbonite keeps a central `changes` table where all mutations of participating tables are recorded. Each `changes` row is associated to a single row in the `transactions` table using PostgreSQL's _internal transaction id_ as the foreign key. This leads to the following interesting properties:
+
+- All `changes` created within a database transaction automatically and implicitly belong to the same record in the `transactions` table, even if they're created separately and agnostic of each other in the application logic. This gives the developer a "natural" way to group related changes into events (more on events later).
+- As the `changes` table is associated to the `transactions` table via a non-nullable foreign key constraint, the entry in the `transactions` table _must be created before any `changes`_. Attempting to modify an audited table without prior insertion into the `transactions` table will result in an error. The `transactions` table carries transactional metadata which can be set by the developer on creation.
+
+On each participating table a trigger is installed (after `INSERT`, `UPDATE`, and `DELETE` statements - `TRUNCATE` is not supported, see below) which calls a procedure stored within the database. This procedure captures the new or updated data within the `changes` table automatically. The procedure fetches its own per-table settings from another table called `triggers`. These settings customize the procedure's behaviour, for instance, they may exclude certain table columns from being captured.
+
+<h3>ℹ️ &ensp;Trigger vs. Write-Ahead-Log / Logical Decoding / Extensions</h3>
+
+Existing solutions for CDC on top of a PostgreSQL database (e.g. [Debezium](https://debezium.io/)) often tail the [Write-Ahead-Log](https://www.postgresql.org/docs/13/wal-intro.html) or use extensions (e.g. [pgaudit](https://www.pgaudit.org/)) instead of using triggers to create change records. Both approaches have their own advantages and disadvantages, and one should try to understand the differences before making up their mind.
+
+* One of the main selling points of triggers is that they are executed as part of the normal transaction logic in the database, hence they benefit from the usual [atomicity and consistency guarantees](https://en.wikipedia.org/wiki/ACID) of relational databases. For audit triggers, among other things this means that data mutations and their audit trail are committed as an atomic unit.
+* At the same time, this property of triggers strongly couples the auditing logic to the business operation. For instance, if the audit trigger raises an error, the entire transaction is aborted. And vice versa, if the business operation aborts, nothing is audited.
+* Additionally, auditing unavoidably has an impact on the database performance. A common criticism of audit triggers is the performance penalty they incur on otherwise "simple" database operations, which is said to be much higher than just tailing the WAL. Carbonite tries to limit the work done in its trigger, but a few indexes and tables are nonetheless touched.
+* Another advantage of triggers is their universality: You should be able to run Carbonite's migrations on any hosted PostgreSQL instance without the need to tweak its configuration or install custom extensions before.
+* The primary advantage of triggers for Carbonite, though, is that we can make use of PostgreSQL's internal transaction id: It allows us to group related changes together and record metadata for the group. This and the simple tooling around it is not (as easily) achievable with a fully decoupled system. However, if you do not need this feature of Carbonite, please be sure to consider other solutions as well.
+
+<h3>ℹ️ &ensp;Why <code>TRUNCATE</code> is not supported</h3>
+
+As the last of the 4 primary data mutating SQL commands, `TRUNCATE` allows to delete all data from a table or a set of tables. It can be instrumented using triggers on the statement level (`FOR EACH STATEMENT` instead of `FOR EACH ROW`), which means the trigger procedure executes only once for the statement and without any data - in contrast to, for instance, an `UPDATE` statement, which also mutates multiple rows but fires the procedure once for each row. While there might be value in auditing `TRUNCATE` statements, the behaviour of the trigger procedure would be quite different from the other commands. For a rarely used SQL command, we chose against this additional complexity and not to support `TRUNCATE` in Carbonite.
+
 ## Installation
 
-### Requirements ⚠️
+### Requirements
 
-Due to its use of [`pg_current_xact_id`](https://www.postgresql.org/docs/13/functions-info.html#FUNCTIONS-PG-SNAPSHOT), Carbonite requires **PostgreSQL version 13 or above**. If you see an error message like the following, your PostgreSQL installation is too old:
+Due to its use of [`pg_current_xact_id`](https://www.postgresql.org/docs/13/functions-info.html#FUNCTIONS-PG-SNAPSHOT), Carbonite requires PostgreSQL *version 13 or above*. If you see an error message like the following, your PostgreSQL installation is too old:
 
 ```
 ** (Postgrex.Error) ERROR 42704 (undefined_object) type "xid8" does not exist
@@ -61,7 +90,6 @@ Due to its use of [`pg_current_xact_id`](https://www.postgresql.org/docs/13/func
 
 ```elixir
 # mix.exs
-
 def deps do
   [
     {:carbonite, "~> 0.3.1"}
@@ -69,24 +97,9 @@ def deps do
 end
 ```
 
-## Usage
+## Getting started
 
-<!-- MDOC -->
-
-Carbonite implements the [Change-Data-Capture](https://en.wikipedia.org/wiki/Change_data_capture) pattern on top of PostgreSQL using database triggers. It keeps a central `changes` table where all mutations of participating tables are recorded. Each `changes` row is associated to a single row in the `transactions` table using PostgreSQL's _internal transaction id_ as the foreign key. This leads to the following interesting properties:
-
-- All `changes` created within a database transaction automatically and implicitly belong to the same record in the `transactions` table, even if they're created separatedly and agnostic of each other in the application logic. This gives the developer a "natural" way to group related changes into events (more on events later).
-- As the `changes` table is associated to the `transactions` table via a non-nullable foreign key constraint, the entry in the `transactions` table _must be created before any `changes`_. Attempting to modify a versioned table without prior insertion into the `transactions` table will result in an error. The `transactions` table carries transactional metadata which can be set by the developer on creation.
-
-Consequently, much of Carbonite's logic lives in database functions and triggers. To get started, we need to create a migration using Ecto.
-
----
-
-<h4>ℹ️ &ensp;Trigger vs. Write-Ahead-Log</h4>
-
-Existing solutions for CDC on top of a PostgreSQL database (e.g. [Debezium](https://debezium.io/)) often tail the [Write-Ahead-Log](https://www.postgresql.org/docs/13/wal-intro.html) instead of using database logic & triggers to create change records. While this is likely more performant than using triggers, it makes it difficult to correlate changes on a transaction level as Carbonite does, and has different consistency guarantees. Carbonite makes this trade-off in favour of simplicity and universality. You should be able to run Carbonite's migrations on any hosted PostgreSQL instance without the need to tweak its configuration or install custom extensions before.
-
-## Database setup
+As much of Carbonite's logic lives in database functions and triggers, to get started, we first need to create a migration using Ecto.
 
 ### Creating the initial migration
 
@@ -111,9 +124,18 @@ defmodule MyApp.Repo.Migrations.InstallCarbonite do
 
     # For each table that you want to capture changes of, you need to install the trigger.
     Carbonite.Migrations.create_trigger(:rabbits)
+
+    # Optionally you may configure the trigger inside the migration.
+    Carbonite.Migrations.put_trigger_config(:rabbits, :excluded_columns, ["age"])
+
+    # Optional outbox to process transactions later.
+    Carbonite.Migrations.create_outbox("rabbit_holes")
   end
 
   def down do
+    # Remove outbox again.
+    Carbonite.Migrations.drop_outbox("rabbit_holes")
+
     # Remove all triggers before dropping the schema.
     Carbonite.Migrations.drop_trigger(:rabbits)
 
@@ -126,7 +148,7 @@ end
 
 ### Updates
 
-When a new Carbonite version is released, it may contain updates to the database schema. As these are announced in the [Changelog](CHANGELOG.md), you each time need to create a migration in your host application like the following. Applying multiple Carbonite migrations in a single host migration is fine.
+When a new Carbonite version is released, it may contain updates to the database schema. As these are announced in the [Changelog](CHANGELOG.md), you each time need to create a migration in your host application like the following.
 
 ```elixir
 # priv/repo/migrations/20210704201534_update_carbonite.exs
@@ -143,7 +165,7 @@ defmodule MyApp.Repo.Migrations.UpdateCarbonite do
 end
 ```
 
-Note that for each of your Carbonite "partitions" (see below), you need to run each Carbonite migration.
+Applying multiple Carbonite migrations in a single host migration is fine. Note that for each of your Carbonite "partitions" (see below), you need to run each Carbonite migration.
 
 ### Trigger configuration
 
@@ -184,19 +206,18 @@ Carbonite.Migrations.put_trigger_config(:rabbits, :filtered_columns, ["age"])
 
 ### Partitioning the Audit Trail
 
-Carbonite can install its tables into multiple database schemas using the `prefix` option. You can use this feature to "partition" your captured data.
+Carbonite can install its tables into multiple database schemas using the `carbonite_prefix` option. You can use this feature to "partition" your captured data.
 
 ```elixir
-Carbonite.Migrations.up(1, carbonite_prefix: "carbonite_lagomorpha")
-Carbonite.Migrations.create_trigger(:rabbits, carbonite_prefix: "carbonite_lagomorpha")
+Carbonite.Migrations.up(1, carbonite_prefix: "carbonite_animals")
+Carbonite.Migrations.create_trigger(:rabbits, carbonite_prefix: "carbonite_animals")
 ```
 
-If desired, tables can participate in multiple partitions by adding multiple triggers on to them. Keep in mind that each partition will need to be processed and purged separately, resulting in multiple streams of change data in your external storage.
-
+Basically all of Carbonite's functions accept the same `carbonite_prefix` option to target a particular partition. If desired, tables can participate in multiple partitions by adding multiple triggers on to them. Keep in mind that each partition will need to be processed and purged separately, resulting in multiple streams of change data in your external storage.
 
 ## Inserting a `Transaction`
 
-In your application logic, before modifying a versioned table like `rabbits`, you need to first create a `Carbonite.Transaction` record.
+In your application logic, before modifying an audited table like `rabbits`, you need to first create a `Carbonite.Transaction` record.
 
 ### With Ecto.Multi
 
@@ -326,7 +347,7 @@ When a `Carbonite.Transaction` record is created at the beginning of an operatio
 A few observations can be made from this:
 
 * When ordered by their `id` field, the transactions will be roughly sorted by the time the corresponding operation was started, not when it was committed.
-* Two transactions running in parallel may be committed "out of order", i.e. the one with the larger `id` may be committed before the smaller `id` transaction if that has a longer runtime.
+* Two transactions running in parallel may be committed "out of order", i.e. one with the larger `id` may be committed before the smaller `id` transaction if that has a longer runtime.
 
 The latter point is crucial: For instance, if two transactions with `id=1` and `id=2` run in parallel and `id=2` finishes before `id=1`, an outside viewer can already see `id=2` in the database before `id=1` is committed. If this outside viewer happens to be an outbox processing job, transaction with `id=1` might be skipped and never looked at again. To mitigate this issue, `Carbonite.process/3` has a `min_age` option which excludes transaction younger than a certain from the processing batch (5 minutes by default, increase this is you expect longer running transactions).
 
@@ -348,7 +369,7 @@ To bypass the capture trigger, Carbonite's trigger configuration provides a togg
 As a result, you have two options:
 
 1. Leave the `mode` at the default value of `:capture` and *turn off* capturing as needed by switching to "override mode". This means for every test case where you do not care about change capturing, you explicitly disable the trigger before any database calls; for instance, in an ExUnit setup block. This approach has the benefit that you still capture all changes by default, and can't miss to test a code path that (in production) would require a `Carbonite.Transaction`. It is, however, still pretty expensive at ~1 additional SQL call per test case.
-2. Set the `mode` to `:ignore` on all triggers in your `:test` environment and instead selectively *turn on*  capturing in test cases where you want to assert on the captured data. For instance, you can set the trigger mode in your migration based on the Mix environment. This approach is cheaper as it does not require any action in your tests by default. Yet you should make sure that you test all code paths that do mutate change-captured tables, in order to assert that each of these inserts a transaction as well.
+2. Set the `mode` to `:ignore` on all triggers in your `:test` environment and instead selectively *turn on* capturing in test cases where you want to assert on the captured data. For instance, you can set the trigger mode in your migration based on the Mix environment. This approach is cheaper as it does not require any action in your tests by default. Yet you should make sure that you test all code paths that do mutate change-captured tables, in order to assert that each of these inserts a transaction as well.
 
 The following code snippet illustrates the second approach:
 
