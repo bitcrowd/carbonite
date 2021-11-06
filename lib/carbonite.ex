@@ -140,6 +140,8 @@ defmodule Carbonite do
 
   See `Carbonite.Query.outbox_queue/2` for query options.
 
+  Returns the number of processed transactions.
+
   ## Examples
 
       Carbonite.process(MyApp.Repo, "rabbit_holes", fn transaction, _memo ->
@@ -194,8 +196,9 @@ defmodule Carbonite do
   * `carbonite_prefix` - defines the audit trail's schema, defaults to `"carbonite_default"`
   """
   @doc since: "0.4.0"
-  @spec process(repo(), Outbox.name(), process_func()) :: :ok
-  @spec process(repo(), Outbox.name(), [process_option()], process_func()) :: :ok
+  @spec process(repo(), Outbox.name(), process_func()) :: {:ok, non_neg_integer()}
+  @spec process(repo(), Outbox.name(), [process_option()], process_func()) ::
+          {:ok, non_neg_integer()}
   def process(repo, outbox_name, opts \\ [], process_func) do
     carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
     batch_filter = Keyword.get(opts, :batch_filter) || (& &1)
@@ -205,22 +208,26 @@ defmodule Carbonite do
       |> Carbonite.Query.outbox(opts)
       |> repo.one!()
 
-    attrs =
+    {processed, attrs} =
       outbox
       |> Carbonite.Query.outbox_queue(opts)
       |> batch_filter.()
       |> repo.all()
       |> process_batch(outbox, process_func)
+      |> Map.pop(:processed)
 
     outbox
     |> Outbox.changeset(attrs)
     |> repo.update!(prefix: carbonite_prefix)
 
-    :ok
+    {:ok, processed}
   end
 
   defp process_batch(batch, outbox, process_func) do
-    initial = Map.take(outbox, [:last_transaction_id, :memo])
+    initial =
+      outbox
+      |> Map.take([:last_transaction_id, :memo])
+      |> Map.put(:processed, 0)
 
     Enum.reduce_while(batch, initial, fn transaction, acc ->
       {cont_or_halt, opts} = process_transaction(transaction, acc.memo, process_func)
@@ -231,7 +238,8 @@ defmodule Carbonite do
         else
           %{
             last_transaction_id: transaction.id,
-            memo: Keyword.get(opts, :memo, acc.memo)
+            memo: Keyword.get(opts, :memo, acc.memo),
+            processed: acc.processed + 1
           }
         end
 
@@ -253,6 +261,8 @@ defmodule Carbonite do
 
   See `Carbonite.Query.outbox_done/1` for query options.
 
+  Returns the number of deleted transactions.
+
   ## Parameters
 
   * `repo` - the Ecto repository
@@ -264,13 +274,14 @@ defmodule Carbonite do
   * `carbonite_prefix` - defines the audit trail's schema, defaults to `"carbonite_default"`
   """
   @doc since: "0.4.0"
-  @spec purge(repo()) :: :ok
-  @spec purge(repo(), [purge_option()]) :: :ok
+  @spec purge(repo()) :: {:ok, non_neg_integer()}
+  @spec purge(repo(), [purge_option()]) :: {:ok, non_neg_integer()}
   def purge(repo, opts \\ []) do
-    opts
-    |> Carbonite.Query.outbox_done()
-    |> repo.delete_all()
+    {deleted, nil} =
+      opts
+      |> Carbonite.Query.outbox_done()
+      |> repo.delete_all()
 
-    :ok
+    {:ok, deleted}
   end
 end

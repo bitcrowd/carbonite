@@ -59,9 +59,10 @@ defmodule CarboniteTest do
     setup [:insert_past_transactions]
 
     test "remembers the last processed position" do
-      process(TestRepo, "rabbits", fn _tx, _memo ->
-        :cont
-      end)
+      assert {:ok, 3} =
+               process(TestRepo, "rabbits", fn _tx, _memo ->
+                 :cont
+               end)
 
       %Outbox{} = outbox = get_rabbits_outbox()
       assert outbox.last_transaction_id == 300_000
@@ -69,13 +70,14 @@ defmodule CarboniteTest do
     end
 
     test "reduces the batch to the memo and remembers it" do
-      process(TestRepo, "rabbits", fn tx, memo ->
-        expected_id = Map.get(memo, "next_id", 100_000)
+      assert {:ok, 3} =
+               process(TestRepo, "rabbits", fn tx, memo ->
+                 expected_id = Map.get(memo, "next_id", 100_000)
 
-        assert tx.id == expected_id
+                 assert tx.id == expected_id
 
-        {:cont, memo: Map.put(memo, "next_id", expected_id + 100_000)}
-      end)
+                 {:cont, memo: Map.put(memo, "next_id", expected_id + 100_000)}
+               end)
 
       %Outbox{} = outbox = get_rabbits_outbox()
       assert outbox.last_transaction_id == 300_000
@@ -83,9 +85,10 @@ defmodule CarboniteTest do
     end
 
     test "can be stopped and discards the last transaction" do
-      process(TestRepo, "rabbits", fn _tx, _memo ->
-        {:halt, memo: :ignored}
-      end)
+      assert {:ok, 0} =
+               process(TestRepo, "rabbits", fn _tx, _memo ->
+                 {:halt, memo: :ignored}
+               end)
 
       %Outbox{} = outbox = get_rabbits_outbox()
       assert outbox.last_transaction_id == 0
@@ -93,9 +96,10 @@ defmodule CarboniteTest do
     end
 
     test "can be stopped without discarding the last transaction" do
-      process(TestRepo, "rabbits", fn _tx, _memo ->
-        {:halt, discard: false, memo: %{"some" => "data"}}
-      end)
+      assert {:ok, 1} =
+               process(TestRepo, "rabbits", fn _tx, _memo ->
+                 {:halt, discard: false, memo: %{"some" => "data"}}
+               end)
 
       %Outbox{} = outbox = get_rabbits_outbox()
       assert outbox.last_transaction_id == 100_000
@@ -105,10 +109,11 @@ defmodule CarboniteTest do
     test "starts at the last processed position (+1)" do
       update_rabbits_outbox(%{last_transaction_id: 200_000})
 
-      process(TestRepo, "rabbits", fn tx, _memo ->
-        send(self(), tx.id)
-        :cont
-      end)
+      assert {:ok, 1} =
+               process(TestRepo, "rabbits", fn tx, _memo ->
+                 send(self(), tx.id)
+                 :cont
+               end)
 
       refute_received 100_000
       refute_received 200_000
@@ -116,10 +121,11 @@ defmodule CarboniteTest do
     end
 
     test "passes down batch query options" do
-      process(TestRepo, "rabbits", [min_age: 9_000], fn tx, _memo ->
-        send(self(), tx.id)
-        :cont
-      end)
+      assert {:ok, 1} =
+               process(TestRepo, "rabbits", [min_age: 9_000], fn tx, _memo ->
+                 send(self(), tx.id)
+                 :cont
+               end)
 
       assert_received 100_000
       refute_received 200_000
@@ -133,10 +139,11 @@ defmodule CarboniteTest do
         where(query, [t], t.inserted_at < ^max_inserted_at)
       end
 
-      process(TestRepo, "rabbits", [batch_filter: batch_filter], fn tx, _memo ->
-        send(self(), tx.id)
-        :cont
-      end)
+      assert {:ok, 1} =
+               process(TestRepo, "rabbits", [batch_filter: batch_filter], fn tx, _memo ->
+                 send(self(), tx.id)
+                 :cont
+               end)
 
       assert_received 100_000
       refute_received 200_000
@@ -154,13 +161,13 @@ defmodule CarboniteTest do
     end
 
     test "deletes transactions that have been processed by all outboxes" do
-      purge(TestRepo)
+      assert {:ok, 2} = purge(TestRepo)
 
       assert [%Transaction{id: 300_000}] = get_transactions()
     end
 
     test "passes down batch query options" do
-      purge(TestRepo, min_age: 9_000)
+      assert {:ok, 1} = purge(TestRepo, min_age: 9_000)
 
       assert [%Transaction{id: 200_000}, %Transaction{id: 300_000}] = get_transactions()
     end
