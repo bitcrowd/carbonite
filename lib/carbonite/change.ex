@@ -17,6 +17,11 @@ defmodule Carbonite.Change do
 
   use Ecto.Schema
 
+  if Code.ensure_loaded?(Jason.Encoder) do
+    @derive {Jason.Encoder,
+             only: [:id, :op, :table_prefix, :table_name, :table_pk, :data, :changed]}
+  end
+
   @primary_key false
   @timestamps_opts [type: :utc_datetime_usec]
 

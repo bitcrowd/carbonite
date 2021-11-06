@@ -25,4 +25,46 @@ defmodule Carbonite.TransactionTest do
       assert get_field(changeset, :meta) == %{foo: 2, bar: 1}
     end
   end
+
+  describe "Jason.Encoder implementation" do
+    test "Transaction can be encoded to JSON" do
+      json =
+        %Carbonite.Transaction{
+          id: 1,
+          meta: %{"foo" => 1},
+          inserted_at: ~U[2021-11-01T12:00:00Z],
+          changes: [
+            %Carbonite.Change{
+              id: 1,
+              op: :insert,
+              table_prefix: "default",
+              table_name: "rabbits",
+              table_pk: ["1"],
+              data: %{"name" => "Jack"},
+              changed: ["name"]
+            }
+          ]
+        }
+        |> Jason.encode!()
+        |> Jason.decode!()
+
+      assert json ==
+               %{
+                 "changes" => [
+                   %{
+                     "changed" => ["name"],
+                     "data" => %{"name" => "Jack"},
+                     "id" => 1,
+                     "op" => "insert",
+                     "table_name" => "rabbits",
+                     "table_pk" => ["1"],
+                     "table_prefix" => "default"
+                   }
+                 ],
+                 "id" => 1,
+                 "inserted_at" => "2021-11-01T12:00:00Z",
+                 "meta" => %{"foo" => 1}
+               }
+    end
+  end
 end

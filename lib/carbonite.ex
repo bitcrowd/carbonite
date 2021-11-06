@@ -142,6 +142,9 @@ defmodule Carbonite do
 
   Returns the number of processed transactions.
 
+  Both `Carbonite.Transaction` and `Carbonite.Change` are serializable to JSON if the jason
+  library is available.
+
   ## Examples
 
       Carbonite.process(MyApp.Repo, "rabbit_holes", fn transaction, _memo ->

@@ -12,6 +12,10 @@ defmodule Carbonite.Transaction do
   use Ecto.Schema
   import Ecto.Changeset
 
+  if Code.ensure_loaded?(Jason.Encoder) do
+    @derive {Jason.Encoder, only: [:id, :meta, :inserted_at, :changes]}
+  end
+
   @primary_key false
   @timestamps_opts [type: :utc_datetime_usec]
 
