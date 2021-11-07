@@ -109,7 +109,7 @@ defmodule Carbonite.Query do
           prefix_option()
           | preload_option()
           | {:min_age, non_neg_integer() | disabled()}
-          | {:batch_size, non_neg_integer() | disabled()}
+          | {:limit, non_neg_integer() | disabled()}
 
   @doc """
   Returns an `t:Ecto.Query.t/0` that selects the next batch of transactions for an outbox.
@@ -119,7 +119,7 @@ defmodule Carbonite.Query do
   ## Options
 
   * `min_age` - the minimum age of a record, defaults to 300 seconds (set nil to disable)
-  * `batch_size` - limits the query in size, defaults to 100 (set nil to disable)
+  * `limit` - limits the query in size, defaults to 100 (set nil to disable)
   * `carbonite_prefix` - defines the audit trail's schema, defaults to `"carbonite_default"`
   * `preload` - can be used to preload the changes, defaults to `true`
   """
@@ -133,7 +133,7 @@ defmodule Carbonite.Query do
 
     from(t in Transaction)
     |> where([t], t.id > ^last_processed_tx_id)
-    |> maybe_apply(opts, :batch_size, 100, fn q, bs -> limit(q, ^bs) end)
+    |> maybe_apply(opts, :limit, 100, fn q, bs -> limit(q, ^bs) end)
     |> maybe_apply(opts, :min_age, 300, &where_inserted_at_lt/2)
     |> maybe_preload(opts, :changes)
     |> order_by({:asc, :id})

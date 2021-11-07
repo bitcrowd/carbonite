@@ -58,59 +58,11 @@ defmodule CarboniteTest do
   describe "process/4" do
     setup [:insert_past_transactions]
 
-    test "remembers the last processed position" do
-      assert {:ok, 3} =
-               process(TestRepo, "rabbits", fn _tx, _memo ->
-                 :cont
-               end)
-
-      %Outbox{} = outbox = get_rabbits_outbox()
-      assert outbox.last_transaction_id == 300_000
-      assert outbox.memo == %{}
-    end
-
-    test "reduces the batch to the memo and remembers it" do
-      assert {:ok, 3} =
-               process(TestRepo, "rabbits", fn tx, memo ->
-                 expected_id = Map.get(memo, "next_id", 100_000)
-
-                 assert tx.id == expected_id
-
-                 {:cont, memo: Map.put(memo, "next_id", expected_id + 100_000)}
-               end)
-
-      %Outbox{} = outbox = get_rabbits_outbox()
-      assert outbox.last_transaction_id == 300_000
-      assert outbox.memo == %{"next_id" => 400_000}
-    end
-
-    test "can be stopped and discards the last transaction" do
-      assert {:ok, 0} =
-               process(TestRepo, "rabbits", fn _tx, _memo ->
-                 {:halt, memo: :ignored}
-               end)
-
-      %Outbox{} = outbox = get_rabbits_outbox()
-      assert outbox.last_transaction_id == 0
-      assert outbox.memo == %{}
-    end
-
-    test "can be stopped without discarding the last transaction" do
-      assert {:ok, 1} =
-               process(TestRepo, "rabbits", fn _tx, _memo ->
-                 {:halt, discard: false, memo: %{"some" => "data"}}
-               end)
-
-      %Outbox{} = outbox = get_rabbits_outbox()
-      assert outbox.last_transaction_id == 100_000
-      assert outbox.memo == %{"some" => "data"}
-    end
-
     test "starts at the last processed position (+1)" do
       update_rabbits_outbox(%{last_transaction_id: 200_000})
 
-      assert {:ok, 1} =
-               process(TestRepo, "rabbits", fn tx, _memo ->
+      assert {:ok, _outbox} =
+               process(TestRepo, "rabbits", fn [tx], _memo ->
                  send(self(), tx.id)
                  :cont
                end)
@@ -121,8 +73,8 @@ defmodule CarboniteTest do
     end
 
     test "passes down batch query options" do
-      assert {:ok, 1} =
-               process(TestRepo, "rabbits", [min_age: 9_000], fn tx, _memo ->
+      assert {:ok, _outbox} =
+               process(TestRepo, "rabbits", [min_age: 9_000], fn [tx], _memo ->
                  send(self(), tx.id)
                  :cont
                end)
@@ -132,22 +84,84 @@ defmodule CarboniteTest do
       refute_received 300_000
     end
 
-    test "accepts a batch_filter function for refining the batch query" do
-      batch_filter = fn query ->
+    test "remembers the last processed position" do
+      assert {:ok, %Outbox{} = outbox} =
+               process(TestRepo, "rabbits", fn _txs, _memo ->
+                 :cont
+               end)
+
+      assert outbox.last_transaction_id == 300_000
+    end
+
+    test "remembers the returned memo" do
+      update_rabbits_outbox(%{memo: %{"foo" => 1}})
+
+      assert {:ok, %Outbox{} = outbox} =
+               process(TestRepo, "rabbits", fn _txs, memo ->
+                 {:cont, memo: Map.put(memo, "foo", memo["foo"] + 1)}
+               end)
+
+      assert outbox.memo == %{"foo" => 4}
+    end
+
+    test "when halted discards the last chunk" do
+      update_rabbits_outbox(%{last_transaction_id: 200_000, memo: %{"foo" => 1}})
+
+      assert {:halt, %Outbox{} = outbox} =
+               process(TestRepo, "rabbits", fn _txs, _memo ->
+                 :halt
+               end)
+
+      assert outbox.last_transaction_id == 200_000
+      assert outbox.memo == %{"foo" => 1}
+    end
+
+    test "when halted still allows to update the outbox" do
+      assert {:halt, %Outbox{} = outbox} =
+               process(TestRepo, "rabbits", fn _txs, _memo ->
+                 {:halt, last_transaction_id: 100_000, memo: %{"some" => "data"}}
+               end)
+
+      assert outbox.last_transaction_id == 100_000
+      assert outbox.memo == %{"some" => "data"}
+    end
+
+    defp assert_chunks(opts, expected) do
+      assert {:ok, %Outbox{} = outbox} =
+               process(TestRepo, "rabbits", opts, fn txs, memo ->
+                 chunks = Map.get(memo, "chunks", [])
+                 {:cont, memo: Map.put(memo, "chunks", chunks ++ [ids(txs)])}
+               end)
+
+      assert outbox.memo == %{"chunks" => expected}
+    end
+
+    test "accepts a chunk option to send larger chunks to the process function" do
+      assert_chunks([chunk: 2], [[100_000, 200_000], [300_000]])
+    end
+
+    test "defaults to chunk size 1" do
+      assert_chunks([], [[100_000], [200_000], [300_000]])
+    end
+
+    test "continues querying until processable transactions are exhausted" do
+      # Limit in place, but chunk is bigger than limit (so irrelevant).
+      # Algorithm continues until query comes back empty.
+      assert_chunks([chunk: 100, limit: 2], [[100_000, 200_000], [300_000]])
+    end
+
+    test "accepts a filter function for refining the batch query" do
+      filter = fn query ->
         # mimicking the "min_age" behaviour in a custom filter
         max_inserted_at = DateTime.utc_now() |> DateTime.add(-9_000)
         where(query, [t], t.inserted_at < ^max_inserted_at)
       end
 
-      assert {:ok, 1} =
-               process(TestRepo, "rabbits", [batch_filter: batch_filter], fn tx, _memo ->
-                 send(self(), tx.id)
+      assert {:ok, _outbox} =
+               process(TestRepo, "rabbits", [chunk: 100, filter: filter], fn txs, _memo ->
+                 assert ids(txs) == [100_000]
                  :cont
                end)
-
-      assert_received 100_000
-      refute_received 200_000
-      refute_received 300_000
     end
   end
 
