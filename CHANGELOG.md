@@ -1,4 +1,4 @@
-## Unreleased
+## [0.4.0] - 2021-11-07
 
 **New migration patches:** 2, 3
 
