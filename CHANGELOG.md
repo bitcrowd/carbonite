@@ -14,7 +14,7 @@
 * Split into query / processing
 * Simplify processing
 * No more transaction
-* New capabilities: memo, halting
+* New capabilities: memo, halting, chunking
 
 ### Migration versioning
 

@@ -297,11 +297,14 @@ You can create more than one outbox if you need multiple processors, e.g. for mu
 
 ### Processing
 
-You can process an outbox by calling `Carbonite.process/3` with the outbox name and a processor callback function.
+You can process an outbox by calling `Carbonite.process/4` with the outbox name and a processor callback function.
 
 ```elixir
-Carbonite.process(MyApp.Repo, "rabbit_holes", fn transaction, _memo ->
-  send_to_external_database(transaction)
+Carbonite.process(MyApp.Repo, "rabbit_holes", fn transactions, _memo ->
+  for transaction <- transactions do
+    send_to_external_database(transaction)
+  end
+
   :cont
 end)
 ```
@@ -326,8 +329,11 @@ defmodule MyApp.PeriodicOutboxWorker do
   use Oban.Worker, queue: :default, unique: [period: 43_200], retry: false
 
   def perform(%Oban.Job{args: %{"outbox" => outbox}}) do
-    Carbonite.process(MyApp.Repo, outbox, fn transaction, _memo ->
-      send_to_external_database(transaction)
+    Carbonite.process(MyApp.Repo, outbox, fn transactions, _memo ->
+      for transaction <- transactions do
+        send_to_external_database(transaction)
+      end
+
       :cont
     end)
   end
@@ -336,9 +342,9 @@ end
 
 <h4>⚠️&ensp;Transactionality & mutual exclusion</h4>
 
-As the outbox processor is likely to call external services as part of its work, `Carbonite.process/3` does not begin a transaction itself, and consequently does not acquire a lock on the outbox record. In other words, users have to ensure that they don't accidentally run `Carbonite.process/3` for the same outbox concurrently, for instance making use of uniqueness options of the used job processor (e.g. [`unique` in Oban](https://hexdocs.pm/oban/Oban.html#module-unique-jobs)).
+As the outbox processor is likely to call external services as part of its work, `Carbonite.process/4` does not begin a transaction itself, and consequently does not acquire a lock on the outbox record. In other words, users have to ensure that they don't accidentally run `Carbonite.process/4` for the same outbox concurrently, for instance making use of uniqueness options of the used job processor (e.g. [`unique` in Oban](https://hexdocs.pm/oban/Oban.html#module-unique-jobs)).
 
-The absence of transactionality also means that any exception raised within the processor function will immediately abort the `Carbonite.process/3` call without writing the current outbox position to disk. As a result, transactions may be processed again in the next run. Please make sure your receiving system or database can handle duplicate messages.
+The absence of transactionality also means that any exception raised within the processor function will immediately abort the `Carbonite.process/4` call without writing the current outbox position to disk. As a result, transactions may be processed again in the next run. Please make sure your receiving system or database can handle duplicate messages.
 
 <h4>⚠️&ensp;Long running / parallel transactions and the outbox order</h4>
 
@@ -349,7 +355,7 @@ A few observations can be made from this:
 * When ordered by their `id` field, the transactions will be roughly sorted by the time the corresponding operation was started, not when it was committed.
 * Two transactions running in parallel may be committed "out of order", i.e. one with the larger `id` may be committed before the smaller `id` transaction if that has a longer runtime.
 
-The latter point is crucial: For instance, if two transactions with `id=1` and `id=2` run in parallel and `id=2` finishes before `id=1`, an outside viewer can already see `id=2` in the database before `id=1` is committed. If this outside viewer happens to be an outbox processing job, transaction with `id=1` might be skipped and never looked at again. To mitigate this issue, `Carbonite.process/3` has a `min_age` option which excludes transaction younger than a certain from the processing batch (5 minutes by default, increase this is you expect longer running transactions).
+The latter point is crucial: For instance, if two transactions with `id=1` and `id=2` run in parallel and `id=2` finishes before `id=1`, an outside viewer can already see `id=2` in the database before `id=1` is committed. If this outside viewer happens to be an outbox processing job, transaction with `id=1` might be skipped and never looked at again. To mitigate this issue, `Carbonite.process/4` has a `min_age` option which excludes transaction younger than a certain from the processing batch (5 minutes by default, increase this is you expect longer running transactions).
 
 ### Purging
 

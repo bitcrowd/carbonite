@@ -105,8 +105,8 @@ defmodule Carbonite.QueryTest do
       assert ids(outbox_queue()) == [100_000, 200_000, 300_000]
     end
 
-    test "can limit the batch_size" do
-      assert ids(outbox_queue(batch_size: 1)) == [100_000]
+    test "can limit the limit" do
+      assert ids(outbox_queue(limit: 1)) == [100_000]
     end
 
     test "can filter by min_age" do
