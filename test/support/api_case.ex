@@ -15,8 +15,6 @@ defmodule Carbonite.APICase do
       import Ecto.Changeset
       import Ecto.Query
       import Carbonite.APICase
-
-      alias DimaTenant.Repo
     end
   end
 
