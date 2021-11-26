@@ -35,7 +35,7 @@ On top of its database layer, Carbonite provides an API allowing developers to e
 
 ---
 
-<p align="center">🚧&ensp;This is work-in-progress and not yet ready to be used 🚧</p>
+<p align="center">🚧&ensp;This project has not seen much production use yet and its API is still subject to change. Use at your own risk. 🚧</p>
 
 ---
 
