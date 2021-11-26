@@ -33,12 +33,6 @@ On top of its database layer, Carbonite provides an API allowing developers to e
 
 <!-- MDOC -->
 
----
-
-<p align="center">🚧&ensp;This project has not seen much production use yet and its API is still subject to change. Use at your own risk. 🚧</p>
-
----
-
 ## Features
 
 - Convenient installation using migration functions
