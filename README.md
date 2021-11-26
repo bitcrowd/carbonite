@@ -2,7 +2,7 @@
 
 <p align="center">
   <a href="https://github.com/bitcrowd/carbonite">
-    <img alt="carbonite" src="https://raw.githubusercontent.com/bitcrowd/carbonite/assets/logo/rgb_stacked.png">
+    <img alt="carbonite" src="https://raw.githubusercontent.com/bitcrowd/carbonite/assets/logo/darkmode_stacked.png">
   </a>
 </p>
 
