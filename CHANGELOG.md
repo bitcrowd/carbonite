@@ -6,6 +6,10 @@
 
 * The `id` column on `transactions` has been replaced with an ordinary autoincrementing integer PK, filled from a sequence. Next to it a new `xact_id` column continues to store the transaction id (from `pg_current_xact_id`). Both values used together ensure that, first the `id` is monotonically increasing and survives a backup restore (see issue #45), and second the `changes` records can still only be inserted within the same transaction.
 
+### Added
+
+* `Carbonite.Migrations.insert_migration_transaction/1` and its macro friend, `insert_migration_transaction_after_begin`, help with data migrations.
+
 ## [0.4.0] - 2021-11-07
 
 **New migration patches:** 2, 3

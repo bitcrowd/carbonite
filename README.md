@@ -260,6 +260,19 @@ In case you do not have access to metadata you want to persist in the `Carbonite
 Carbonite.Transaction.put_meta(:user_id, ...)
 ```
 
+### Transactions in data migrations
+
+If you manipulate data inside your transactions, as usual a `Carbonite.Transaction` needs to be inserted before any other statements. You can use `Carbonite.Migrations.insert_migration_transaction/1` to insert a transaction with a `meta` attribute populated from the migration module.
+
+
+    import Carbonite.Migrations
+
+    def change do
+      insert_migration_transaction()
+
+      execute("UPDATE ...")
+    end
+
 ## Retrieving data
 
 Of course, persisting the audit trail is not an end in itself. At some point you will want to read the data back and make it accessible to the user. `Carbonite.Query` offers a small suite of helper functions that make it easier to query the database for `Transaction` and `Change` records.

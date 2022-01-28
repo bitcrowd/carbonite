@@ -267,4 +267,130 @@ defmodule Carbonite.Migrations do
 
     :ok
   end
+
+  # ------------------------------ data migration s---------------------------------
+
+  @type insert_migration_transaction_option :: {:carbonite_prefix, prefix()} | {:meta, map()}
+
+  @doc """
+  Inserts a transaction for a data migration.
+
+  The transaction's `meta` attribute is populated with
+
+      {"type": "migration", direction: "up"}
+
+  ... and additionally the `name` from the parameters.
+
+  ## Example
+
+      defmodule MyApp.Repo.Migrations.SomeDataMigration do
+        use Ecto.Migration
+
+        import Carbonite.Migrations
+
+        def change do
+          insert_migration_transaction()
+
+          execute("UPDATE ...", "...")
+        end
+      end
+
+  This works the same for `up/0`/`down/0`-style migrations:
+
+      defmodule MyApp.Repo.Migrations.SomeDataMigration do
+        use Ecto.Migration
+
+        import Carbonite.Migrations
+
+        def up do
+          insert_migration_transaction("some-data-migrated")
+
+          execute("INSERT ...")
+        end
+
+        def down do
+          insert_migration_transaction("some-data-rolled-back")
+
+          execute("DELETE ...")
+        end
+      end
+
+  ## Options
+
+  * `carbonite_prefix` is the schema of the audit trail, defaults to `"carbonite_default"`
+  * `meta` is a map with additional meta information to store on the transaction
+  """
+  @spec insert_migration_transaction(name :: String.t(), [insert_migration_transaction_option()]) ::
+          :ok
+  def insert_migration_transaction(name, opts \\ []) do
+    carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
+    meta = Keyword.get(opts, :meta, %{})
+
+    meta =
+      %{type: "migration", direction: direction(), name: to_string(name)}
+      |> Map.merge(meta)
+      |> Jason.encode!()
+
+    statement =
+      """
+      INSERT INTO #{carbonite_prefix}.transactions (meta, inserted_at)
+      VALUES ('#{meta}'::jsonb, NOW());
+      """
+      |> squish()
+
+    # Needed because `change/0` requires a rollback statement. In our case irrelevant, as we're
+    # inserting a transaction in both directions (and the `direction` value is set dynamically).
+    execute(statement, statement)
+  end
+
+  @doc """
+  Defines a `c:Ecto.Migration.after_begin/0` implementation for a data migration.
+
+  See `insert_migration_transaction/1` for options.
+
+  This determines the `name` of the transaction from the migration's module name.
+
+       {"direction": "up","name": "my_app/repo/migrations/example", "type": "migration"}
+
+  ## Example
+
+      defmodule MyApp.Repo.Migrations.SomeDataMigration do
+        use Ecto.Migration
+
+        import Carbonite.Migrations
+        insert_migration_transaction_after_begin()
+
+        def change do
+          execute("UPDATE ...")
+        end
+      end
+
+  Alternatively, if you define your own migration template module:
+
+      defmodule MyApp.Migration do
+        defmacro __using__ do
+          quote do
+            use Ecto.Migration
+
+            import Carbonite.Migrations
+            insert_migration_transaction_after_begin()
+          end
+        end
+      end
+  """
+  @doc since: "0.5.0"
+  defmacro insert_migration_transaction_after_begin(opts \\ []) do
+    opts = Keyword.take(opts, [:carbonite_prefix, :meta])
+
+    quote do
+      @behaviour Ecto.Migration
+
+      @impl Ecto.Migration
+      def after_begin do
+        __MODULE__
+        |> Macro.underscore()
+        |> Carbonite.Migrations.insert_migration_transaction(unquote(opts))
+      end
+    end
+  end
 end
