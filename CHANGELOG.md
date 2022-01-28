@@ -9,6 +9,7 @@
 ### Added
 
 * `Carbonite.Migrations.insert_migration_transaction/1` and its macro friend, `insert_migration_transaction_after_begin`, help with data migrations.
+* `Carbonite.fetch_changes` returns the changes of the current (ongoing) transaction.
 
 ## [0.4.0] - 2021-11-07
 

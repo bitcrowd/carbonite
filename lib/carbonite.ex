@@ -14,7 +14,7 @@ defmodule Carbonite do
   @moduledoc since: "0.1.0"
 
   import Ecto.Query
-  alias Carbonite.{Outbox, Transaction, Trigger}
+  alias Carbonite.{Outbox, Query, Transaction, Trigger}
 
   @type prefix :: binary()
   @type repo :: Ecto.Repo.t()
@@ -79,6 +79,33 @@ defmodule Carbonite do
       conflict_target: [:id],
       returning: true
     )
+  end
+
+  @doc """
+  Fetches all changes of the current transaction from the database.
+
+  Make sure to run this within a transaction.
+
+  ## Parameters
+
+  * `repo` - the Ecto repository
+  * `opts` - optional keyword list
+
+  ## Options
+
+  * `carbonite_prefix` - defines the audit trail's schema, defaults to `"carbonite_default"`
+  """
+  @doc since: "0.5.0"
+  @spec fetch_changes(repo()) :: {:ok, [Carbonite.Change.t()]}
+  @spec fetch_changes(repo(), [prefix_option()]) :: {:ok, [Carbonite.Change.t()]}
+  def fetch_changes(repo, opts \\ []) do
+    %Carbonite.Transaction{changes: changes} =
+      [preload: true]
+      |> Keyword.merge(opts)
+      |> Query.current_transaction()
+      |> repo.one()
+
+    {:ok, changes}
   end
 
   @doc """
