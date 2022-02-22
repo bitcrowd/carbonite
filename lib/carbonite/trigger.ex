@@ -23,7 +23,7 @@ defmodule Carbonite.Trigger do
           excluded_columns: [String.t()],
           filtered_columns: [String.t()],
           mode: mode(),
-          override_transaction_id: nil | non_neg_integer(),
+          override_xact_id: nil | non_neg_integer(),
           inserted_at: DateTime.t(),
           updated_at: DateTime.t()
         }
@@ -35,7 +35,7 @@ defmodule Carbonite.Trigger do
     field(:excluded_columns, {:array, :string}, default: [])
     field(:filtered_columns, {:array, :string}, default: [])
     field(:mode, Ecto.Enum, values: [:capture, :ignore])
-    field(:override_transaction_id, :integer)
+    field(:override_xact_id, :integer)
 
     timestamps()
   end

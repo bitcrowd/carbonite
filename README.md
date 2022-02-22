@@ -36,7 +36,7 @@ On top of its database layer, Carbonite provides an API allowing developers to e
 ## Features
 
 - Convenient installation using migration functions
-- Guaranteed consistency based on foreign-key constraints and ACID
+- Guaranteed consistency based on triggers, foreign-key constraints, and ACID
   - No mutation without recorded `Change`
   - No `Change` without `Transaction`
 - Customizable audit metadata (per transaction)
@@ -49,12 +49,19 @@ On top of its database layer, Carbonite provides an API allowing developers to e
 
 ## How it works
 
-Carbonite keeps a central `changes` table where all mutations of participating tables are recorded. Each `changes` row is associated to a single row in the `transactions` table using PostgreSQL's _internal transaction id_ as the foreign key. This leads to the following interesting properties:
+Carbonite keeps a central `changes` table where all mutations of participating tables are recorded. On each such table a trigger is installed (after `INSERT`, `UPDATE`, and `DELETE` statements - `TRUNCATE` is not supported, see below) which calls a procedure stored within the database. This procedure captures the new or updated data within the `changes` table automatically. The procedure fetches its own per-table settings from another table called `triggers`. These settings customize the procedure's behaviour, for instance, they may exclude certain table columns from being captured.
+
+Besides the `changes` table, storing information about individual database statements (or rather, their impact on the data), Carbonite's `transactions` table stores information on database _transactions_. Within your application logic, you can insert a row into this table after you begin a database transaction, and record arbitrary metadata for it.
+
+Apart from the metadata, the `transactions` table houses two identifier columns: `id` and `xact_id`. While `id` is an ordinary, autoincrementing integer primary key, the `xact_id` is set to `pg_current_xact_id()`, PostgreSQL's internal transaction identifier. Each row in the `changes` table is associated to a single row in the `transactions` table, referencing *both these identifiers*.
+
+- The `changes.transaction_id` (referencing `transactions.id`) field is filled with the ["current value"](https://www.postgresql.org/docs/13/functions-sequence.html) of the related sequence. This is your regular foreign key column, enough to relate a `changes` record with exactly one `transactions` record. Consistency with the `transactions` table is guaranteed by a foreign key constraint.
+- Additionally, the `changes.transaction_xact_id` field is set to `pg_current_xact_id()`. Together these references ensure that, not only relates each `changes` record to a single `transactions` record, but records in these tables have been inserted *within the same database transaction*. Consistency is ensure by a manual lookup in the trigger procedure.
+
+This leads to the following interesting properties:
 
 - All `changes` created within a database transaction automatically and implicitly belong to the same record in the `transactions` table, even if they're created separately and agnostic of each other in the application logic. This gives the developer a "natural" way to group related changes into events (more on events later).
-- As the `changes` table is associated to the `transactions` table via a non-nullable foreign key constraint, the entry in the `transactions` table _must be created before any `changes`_. Attempting to modify an audited table without prior insertion into the `transactions` table will result in an error. The `transactions` table carries transactional metadata which can be set by the developer on creation.
-
-On each participating table a trigger is installed (after `INSERT`, `UPDATE`, and `DELETE` statements - `TRUNCATE` is not supported, see below) which calls a procedure stored within the database. This procedure captures the new or updated data within the `changes` table automatically. The procedure fetches its own per-table settings from another table called `triggers`. These settings customize the procedure's behaviour, for instance, they may exclude certain table columns from being captured.
+- The entry in the `transactions` table _must be created before any `changes`_. Attempting to modify an audited table without prior insertion into the `transactions` table will result in an error.
 
 <h3>ℹ️ &ensp;Trigger vs. Write-Ahead-Log / Logical Decoding / Extensions</h3>
 
@@ -115,6 +122,8 @@ defmodule MyApp.Repo.Migrations.InstallCarbonite do
   def up do
     Carbonite.Migrations.up(1)
     Carbonite.Migrations.up(2)
+    Carbonite.Migrations.up(3)
+    Carbonite.Migrations.up(4)
 
     # For each table that you want to capture changes of, you need to install the trigger.
     Carbonite.Migrations.create_trigger(:rabbits)
@@ -134,6 +143,8 @@ defmodule MyApp.Repo.Migrations.InstallCarbonite do
     Carbonite.Migrations.drop_trigger(:rabbits)
 
     # Drop the Carbonite tables.
+    Carbonite.Migrations.down(4)
+    Carbonite.Migrations.down(3)
     Carbonite.Migrations.down(2)
     Carbonite.Migrations.down(1)
   end
@@ -342,7 +353,7 @@ The absence of transactionality also means that any exception raised within the 
 
 <h4>⚠️&ensp;Long running / parallel transactions and the outbox order</h4>
 
-When a `Carbonite.Transaction` record is created at the beginning of an operation in your application, it records the "current" transaction identifier in its `id` field. As PostgreSQL lazily allocates this number (*simplification*: when a transaction first modifies data), this `INSERT` statement is usually also when this number is pulled from its global sequence. The record in the `transactions` table becomes visible to other transactions when the current transaction is committed.
+When a `Carbonite.Transaction` record is created at the beginning of an operation in your application, it records the "current" sequence value in its `id` field. The record in the `transactions` table becomes visible to other transactions when the current transaction is committed.
 
 A few observations can be made from this:
 
@@ -364,7 +375,7 @@ Carbonite.purge(MyApp.Repo)
 
 One of Carbonite's key features is that it is virtually impossible to forget to record a change to a table (due to the trigger) or to forget to insert an enclosing `Carbonite.Transaction` beforehand (due to the foreign key constraint between `changes` and `transactions`). However, in some circumstances it may be desirable to temporarily switch off change capturing. One such situation is the use of factories (e.g. ExMachina) inside your test suite: Inserting a transaction before each factory call quickly becomes cumbersome and will unnecessarily increase execution time.
 
-To bypass the capture trigger, Carbonite's trigger configuration provides a toggle mechanism consisting of two fields: `mode` and `override_transaction_id`. The former you set while installing the trigger on a table in a migration, while the latter allows to "override" whatever has been set at runtime, and only for the current transaction. If you are using Ecto's SQL sandbox for running transactional tests, this means the override is going to be active until the end of the test case.
+To bypass the capture trigger, Carbonite's trigger configuration provides a toggle mechanism consisting of two fields: `mode` and `override_xact_id`. The former you set while installing the trigger on a table in a migration, while the latter allows to "override" whatever has been set at runtime, and only for the current transaction. If you are using Ecto's SQL sandbox for running transactional tests, this means the override is going to be active until the end of the test case.
 
 As a result, you have two options:
 

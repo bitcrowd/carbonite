@@ -35,7 +35,8 @@ defmodule Carbonite.Change do
           table_pk: nil | [String.t()],
           data: nil | map(),
           changed: [String.t()],
-          transaction: Ecto.Association.NotLoaded.t() | Carbonite.Transaction.t()
+          transaction: Ecto.Association.NotLoaded.t() | Carbonite.Transaction.t(),
+          transaction_xact_id: non_neg_integer()
         }
 
   schema "changes" do
@@ -48,5 +49,7 @@ defmodule Carbonite.Change do
     field(:changed, {:array, :string})
 
     belongs_to(:transaction, Carbonite.Transaction)
+
+    field(:transaction_xact_id, :integer)
   end
 end
