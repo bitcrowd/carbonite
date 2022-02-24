@@ -18,7 +18,7 @@ defmodule Carbonite.Migrations.V3 do
     create table("outboxes", primary_key: false, prefix: prefix) do
       add(:name, :string, null: false, primary_key: true)
       add(:memo, :map, null: false, default: "{}")
-      add(:last_transaction_id, :xid8, null: false, default: "0::xid8")
+      add(:last_transaction_id, :xid8, null: false, default: "0::TEXT::xid8")
 
       timestamps(type: :utc_datetime_usec)
     end

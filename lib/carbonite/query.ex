@@ -84,7 +84,14 @@ defmodule Carbonite.Query do
   @spec current_transaction() :: Ecto.Query.t()
   @spec current_transaction([current_transaction_option()]) :: Ecto.Query.t()
   def current_transaction(opts \\ []) do
-    from(t in Transaction, where: t.id == fragment("pg_current_xact_id()"))
+    carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
+
+    from(t in Transaction)
+    |> where(
+      [t],
+      t.id == fragment("CURRVAL(CONCAT(?::VARCHAR, '.transactions_id_seq'))", ^carbonite_prefix)
+    )
+    |> where([t], t.xact_id == fragment("pg_current_xact_id()"))
     |> maybe_preload(opts, :changes)
     |> put_carbonite_prefix(opts)
   end

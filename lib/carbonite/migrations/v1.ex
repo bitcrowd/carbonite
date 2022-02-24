@@ -10,34 +10,10 @@ defmodule Carbonite.Migrations.V1 do
 
   @type up_option :: {:carbonite_prefix, prefix()}
 
-  @impl true
-  @spec up([up_option()]) :: :ok
-  def up(opts) do
-    prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
-
-    # ---------------- Schema --------------------
-
-    execute("CREATE SCHEMA IF NOT EXISTS #{prefix}")
-
-    # -------------- Transactions ----------------
-
-    create table("transactions", primary_key: false, prefix: prefix) do
-      add(:id, :xid8, null: false, primary_key: true)
-      add(:meta, :map, null: false, default: %{})
-      add(:processed_at, :utc_datetime_usec)
-
-      timestamps(updated_at: false, type: :utc_datetime_usec)
-    end
-
-    create(
-      index("transactions", [:inserted_at],
-        where: "processed_at IS NULL",
-        prefix: prefix
-      )
-    )
-
+  @spec create_set_transaction_id_procedure(prefix()) :: :ok
+  def create_set_transaction_id_procedure(prefix) do
     """
-    CREATE FUNCTION #{prefix}.set_transaction_id() RETURNS TRIGGER AS
+    CREATE OR REPLACE FUNCTION #{prefix}.set_transaction_id() RETURNS TRIGGER AS
     $body$
     BEGIN
       NEW.id = COALESCE(NEW.id, pg_current_xact_id());
@@ -47,81 +23,12 @@ defmodule Carbonite.Migrations.V1 do
     LANGUAGE plpgsql;
     """
     |> squish_and_execute()
+  end
 
+  @spec create_capture_changes_procedure(prefix()) :: :ok
+  def create_capture_changes_procedure(prefix) do
     """
-    CREATE TRIGGER set_transaction_id_trigger
-    BEFORE INSERT
-    ON #{prefix}.transactions
-    FOR EACH ROW
-    EXECUTE PROCEDURE #{prefix}.set_transaction_id();
-    """
-    |> squish_and_execute()
-
-    # ---------------- Changes -------------------
-
-    execute("CREATE TYPE #{prefix}.change_op AS ENUM('insert', 'update', 'delete');")
-
-    create table("changes", primary_key: false, prefix: prefix) do
-      add(:id, :bigserial, null: false, primary_key: true)
-
-      add(
-        :transaction_id,
-        references(:transactions,
-          on_delete: :delete_all,
-          on_update: :update_all,
-          type: :xid8,
-          prefix: prefix
-        ),
-        null: false
-      )
-
-      add(:op, :"#{prefix}.change_op", null: false)
-      add(:table_prefix, :string, null: false)
-      add(:table_name, :string, null: false)
-      add(:table_pk, {:array, :string}, null: true)
-      add(:data, :jsonb, null: false)
-      add(:changed, {:array, :string}, null: false)
-    end
-
-    create(index("changes", [:transaction_id], prefix: prefix))
-    create(index("changes", [:table_prefix, :table_name, :table_pk], prefix: prefix))
-
-    # ---------------- Triggers ------------------
-
-    execute("CREATE TYPE #{prefix}.trigger_mode AS ENUM('capture', 'ignore');")
-
-    create table("triggers", primary_key: false, prefix: prefix) do
-      add(:id, :bigserial, null: false, primary_key: true)
-      add(:table_prefix, :string, null: false)
-      add(:table_name, :string, null: false)
-      add(:primary_key_columns, {:array, :string}, null: false)
-      add(:excluded_columns, {:array, :string}, null: false)
-      add(:filtered_columns, {:array, :string}, null: false)
-      add(:mode, :"#{prefix}.trigger_mode", null: false)
-      add(:override_transaction_id, :xid8, null: true)
-
-      timestamps()
-    end
-
-    create(
-      index("triggers", [:table_prefix, :table_name],
-        name: "table_index",
-        unique: true,
-        include: [
-          :primary_key_columns,
-          :excluded_columns,
-          :filtered_columns,
-          :mode,
-          :override_transaction_id
-        ],
-        prefix: prefix
-      )
-    )
-
-    # ------------- Capture Function -------------
-
-    """
-    CREATE FUNCTION #{prefix}.capture_changes() RETURNS TRIGGER AS
+    CREATE OR REPLACE FUNCTION #{prefix}.capture_changes() RETURNS TRIGGER AS
     $body$
     DECLARE
       trigger_row #{prefix}.triggers;
@@ -211,6 +118,109 @@ defmodule Carbonite.Migrations.V1 do
     LANGUAGE plpgsql;
     """
     |> squish_and_execute()
+  end
+
+  @impl true
+  @spec up([up_option()]) :: :ok
+  def up(opts) do
+    prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
+
+    # ---------------- Schema --------------------
+
+    execute("CREATE SCHEMA IF NOT EXISTS #{prefix}")
+
+    # -------------- Transactions ----------------
+
+    create table("transactions", primary_key: false, prefix: prefix) do
+      add(:id, :xid8, null: false, primary_key: true)
+      add(:meta, :map, null: false, default: %{})
+      add(:processed_at, :utc_datetime_usec)
+
+      timestamps(updated_at: false, type: :utc_datetime_usec)
+    end
+
+    create(
+      index("transactions", [:inserted_at],
+        where: "processed_at IS NULL",
+        prefix: prefix
+      )
+    )
+
+    create_set_transaction_id_procedure(prefix)
+
+    """
+    CREATE TRIGGER set_transaction_id_trigger
+    BEFORE INSERT
+    ON #{prefix}.transactions
+    FOR EACH ROW
+    EXECUTE PROCEDURE #{prefix}.set_transaction_id();
+    """
+    |> squish_and_execute()
+
+    # ---------------- Changes -------------------
+
+    execute("CREATE TYPE #{prefix}.change_op AS ENUM('insert', 'update', 'delete');")
+
+    create table("changes", primary_key: false, prefix: prefix) do
+      add(:id, :bigserial, null: false, primary_key: true)
+
+      add(
+        :transaction_id,
+        references(:transactions,
+          on_delete: :delete_all,
+          on_update: :update_all,
+          type: :xid8,
+          prefix: prefix
+        ),
+        null: false
+      )
+
+      add(:op, :"#{prefix}.change_op", null: false)
+      add(:table_prefix, :string, null: false)
+      add(:table_name, :string, null: false)
+      add(:table_pk, {:array, :string}, null: true)
+      add(:data, :jsonb, null: false)
+      add(:changed, {:array, :string}, null: false)
+    end
+
+    create(index("changes", [:transaction_id], prefix: prefix))
+    create(index("changes", [:table_prefix, :table_name, :table_pk], prefix: prefix))
+
+    # ---------------- Triggers ------------------
+
+    execute("CREATE TYPE #{prefix}.trigger_mode AS ENUM('capture', 'ignore');")
+
+    create table("triggers", primary_key: false, prefix: prefix) do
+      add(:id, :bigserial, null: false, primary_key: true)
+      add(:table_prefix, :string, null: false)
+      add(:table_name, :string, null: false)
+      add(:primary_key_columns, {:array, :string}, null: false)
+      add(:excluded_columns, {:array, :string}, null: false)
+      add(:filtered_columns, {:array, :string}, null: false)
+      add(:mode, :"#{prefix}.trigger_mode", null: false)
+      add(:override_transaction_id, :xid8, null: true)
+
+      timestamps()
+    end
+
+    create(
+      index("triggers", [:table_prefix, :table_name],
+        name: "table_index",
+        unique: true,
+        include: [
+          :primary_key_columns,
+          :excluded_columns,
+          :filtered_columns,
+          :mode,
+          :override_transaction_id
+        ],
+        prefix: prefix
+      )
+    )
+
+    # ------------- Capture Function -------------
+
+    create_capture_changes_procedure(prefix)
 
     :ok
   end

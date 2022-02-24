@@ -100,7 +100,7 @@ defmodule Carbonite do
     carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
     from(t in Trigger,
-      update: [set: [override_transaction_id: fragment("pg_current_xact_id()")]]
+      update: [set: [override_xact_id: fragment("pg_current_xact_id()")]]
     )
     |> repo.update_all([], prefix: carbonite_prefix)
 

@@ -18,7 +18,7 @@ defmodule Carbonite.Migrations do
   # --------------------------------- patch levels ---------------------------------
 
   @initial_patch 1
-  @current_patch 2
+  @current_patch 4
 
   @doc false
   @spec initial_patch :: non_neg_integer()
@@ -39,8 +39,8 @@ defmodule Carbonite.Migrations do
 
   Make sure that you run all migrations in your host application.
 
-  * Initial patch: 1
-  * Current patch: 2
+  * Initial patch: #{@initial_patch}
+  * Current patch: #{@current_patch}
 
   ## Options
 

@@ -221,6 +221,16 @@ defmodule CaptureTest do
         "ERROR 23503 (foreign_key_violation) INSERT on table public.rabbits " <>
           "without prior INSERT into carbonite_default.transactions"
 
+      # Case 1: Session has never called `NEXTVAL` -> `CURRVAL` fails.
+
+      assert_raise Postgrex.Error, msg, fn ->
+        TestRepo.transaction(&insert_jack/0)
+      end
+
+      # Case 2: Previous transaction (in session) has used `NEXTVAL` -> FK violation.
+
+      query!("SELECT NEXTVAL('carbonite_default.transactions_id_seq');")
+
       assert_raise Postgrex.Error, msg, fn ->
         TestRepo.transaction(&insert_jack/0)
       end
@@ -243,7 +253,7 @@ defmodule CaptureTest do
     test "override mode reverses the default mode" do
       TestRepo.transaction(fn ->
         query!("""
-        UPDATE carbonite_default.triggers SET override_transaction_id = pg_current_xact_id();
+        UPDATE carbonite_default.triggers SET override_xact_id = pg_current_xact_id();
         """)
 
         insert_jack()
@@ -254,7 +264,7 @@ defmodule CaptureTest do
 
     test "default mode can be set to ignore" do
       # This test exists because we had a bug with the ignore mode
-      # when the override_transaction_id was NULL
+      # when the override_xact_id was NULL
       TestRepo.transaction(fn ->
         query!("""
         UPDATE carbonite_default.triggers SET mode = 'ignore';
