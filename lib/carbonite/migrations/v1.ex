@@ -10,8 +10,8 @@ defmodule Carbonite.Migrations.V1 do
 
   @type up_option :: {:carbonite_prefix, prefix()}
 
-  @spec create_set_transaction_id(prefix()) :: :ok
-  def create_set_transaction_id(prefix) do
+  @spec create_set_transaction_id_procedure(prefix()) :: :ok
+  def create_set_transaction_id_procedure(prefix) do
     """
     CREATE OR REPLACE FUNCTION #{prefix}.set_transaction_id() RETURNS TRIGGER AS
     $body$
@@ -25,8 +25,8 @@ defmodule Carbonite.Migrations.V1 do
     |> squish_and_execute()
   end
 
-  @spec create_capture_changes(prefix()) :: :ok
-  def create_capture_changes(prefix) do
+  @spec create_capture_changes_procedure(prefix()) :: :ok
+  def create_capture_changes_procedure(prefix) do
     """
     CREATE OR REPLACE FUNCTION #{prefix}.capture_changes() RETURNS TRIGGER AS
     $body$
@@ -146,7 +146,7 @@ defmodule Carbonite.Migrations.V1 do
       )
     )
 
-    create_set_transaction_id(prefix)
+    create_set_transaction_id_procedure(prefix)
 
     """
     CREATE TRIGGER set_transaction_id_trigger
@@ -220,7 +220,7 @@ defmodule Carbonite.Migrations.V1 do
 
     # ------------- Capture Function -------------
 
-    create_capture_changes(prefix)
+    create_capture_changes_procedure(prefix)
 
     :ok
   end

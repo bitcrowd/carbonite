@@ -223,8 +223,8 @@ defmodule Carbonite.Migrations.V4 do
 
     # ------------ Restore functions -------------
 
-    V1.create_set_transaction_id(prefix)
-    V1.create_capture_changes(prefix)
+    V1.create_set_transaction_id_procedure(prefix)
+    V1.create_capture_changes_procedure(prefix)
 
     :ok
   end
