@@ -6,11 +6,18 @@ defmodule Carbonite.Migrations.Helper do
   import Ecto.Migration, only: [execute: 1]
 
   # Removes surrounding and consecutive whitespace from SQL to improve readability in console.
-  @spec squish_and_execute(String.t()) :: :ok
-  def squish_and_execute(statement) do
+  @spec squish(String.t()) :: String.t()
+  def squish(statement) do
     statement
     |> String.replace(~r/[[:space:]]+/, " ")
     |> String.trim()
+  end
+
+  # Removes surrounding and consecutive whitespace from SQL to improve readability in console.
+  @spec squish_and_execute(String.t()) :: :ok
+  def squish_and_execute(statement) do
+    statement
+    |> squish()
     |> execute()
   end
 
