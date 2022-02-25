@@ -167,8 +167,9 @@ defmodule Carbonite.Query do
   @spec outbox_done() :: Ecto.Query.t()
   @spec outbox_done([outbox_done_option()]) :: Ecto.Query.t()
   def outbox_done(opts \\ []) do
-    # NOTE: MIN(xid8) is not defined, hence ALL
-
+    # NOTE: The query below has a non-optimal query plan, but expressing it differently makes
+    #       it a bit convoluted (e.g., fetching the min `last_transaction_id` or `MAX_INT` if that
+    #       does not exist and then filtering by <= that number), so we keep the `ALL()` for now.
     from(t in Transaction)
     |> where([t], t.id <= all(from(o in Outbox, select: o.last_transaction_id)))
     |> maybe_apply(opts, :min_age, 300, &where_inserted_at_lt/2)

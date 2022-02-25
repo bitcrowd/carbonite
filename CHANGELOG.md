@@ -1,4 +1,4 @@
-## Unreleased
+## [0.5.0] - 2022-02-25
 
 **New migration patches:** 4
 
