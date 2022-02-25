@@ -17,7 +17,15 @@ defmodule Carbonite.Multi do
   @doc """
   Adds an insert operation for a `Carbonite.Transaction` to an `Ecto.Multi`.
 
+  Multi step is called `:carbonite_transaction`.
+
   See `Carbonite.insert_transaction/3` for options.
+
+  ## Example
+
+      Ecto.Multi.new()
+      |> Carbonite.Multi.insert_transaction(%{meta: %{type: "create_rabbit"}})
+      |> Ecto.Multi.insert(:rabbit, fn _ -> Rabbit.changeset(%{}) end)
   """
   @doc since: "0.2.0"
   @spec insert_transaction(Multi.t()) :: Multi.t()
@@ -26,6 +34,31 @@ defmodule Carbonite.Multi do
   def insert_transaction(%Multi{} = multi, params \\ %{}, opts \\ []) do
     Multi.run(multi, :carbonite_transaction, fn repo, _state ->
       Carbonite.insert_transaction(repo, params, opts)
+    end)
+  end
+
+  @doc """
+  Adds a operation to an `Ecto.Multi` to fetch the changes of the current transaction.
+
+  Useful for returning all transaction changes to the caller.
+
+  Multi step is called `:carbonite_changes`.
+
+  See `Carbonite.fetch_changes/2` for options.
+
+  ## Example
+
+      Ecto.Multi.new()
+      |> Carbonite.Multi.insert_transaction(%{meta: %{type: "create_rabbit"}})
+      |> Ecto.Multi.insert(:rabbit, fn _ -> Rabbit.changeset(%{}) end)
+      |> Carbonite.Multi.fetch_changes()
+  """
+  @doc since: "0.5.0"
+  @spec fetch_changes(Multi.t()) :: Multi.t()
+  @spec fetch_changes(Multi.t(), [prefix_option()]) :: Multi.t()
+  def fetch_changes(%Multi{} = multi, opts \\ []) do
+    Multi.run(multi, :carbonite_changes, fn repo, _state ->
+      Carbonite.fetch_changes(repo, opts)
     end)
   end
 

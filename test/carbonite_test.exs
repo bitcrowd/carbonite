@@ -5,6 +5,12 @@ defmodule CarboniteTest do
   import Carbonite
   alias Carbonite.{Outbox, Rabbit, TestRepo, Transaction}
 
+  defp insert_jack do
+    %{name: "Jack", age: 99}
+    |> Rabbit.create_changeset()
+    |> TestRepo.insert!()
+  end
+
   describe "insert_transaction/3" do
     test "inserts a transaction" do
       assert {:ok, tx} = insert_transaction(TestRepo)
@@ -43,13 +49,22 @@ defmodule CarboniteTest do
     end
   end
 
+  describe "fetch_changes/2" do
+    test "inserts a transaction" do
+      TestRepo.transaction(fn ->
+        insert_transaction(TestRepo)
+        insert_jack()
+
+        assert {:ok, [%Carbonite.Change{op: :insert}]} = fetch_changes(TestRepo)
+      end)
+    end
+  end
+
   describe "override_mode/2" do
     test "enables override mode for the current transaction" do
       assert override_mode(TestRepo) == :ok
 
-      %{name: "Jack", age: 99}
-      |> Rabbit.create_changeset()
-      |> TestRepo.insert!()
+      insert_jack()
 
       assert get_transactions() == []
     end
