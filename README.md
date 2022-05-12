@@ -431,7 +431,7 @@ defmodule MyApp.CarboniteHelpers do
 end
 
 # test/some_test.exs
-describe "my_operation/0"
+describe "my_operation/0" do
   setup [:carbonite_override_mode]
 
   test "auditing" do
