@@ -8,9 +8,11 @@ defmodule Carbonite.Change do
   JSON object while the `changed` field is an empty list.
 
   `UPDATE` statements contain the updated record in `data` while the `changed` field is a list
-  of attributes that have changed.
+  of attributes that have changed. The `changed_from` field may additionally contain a partial
+  representation of the replaced record, showing only the diff to the updated record. This
+  behaviour is optional and can be enabled with the `store_changed_from` trigger option.
 
-  `DELETE` statements have the delete data in `data` while `changed` is again an empty list.
+  `DELETE` statements have the deleted data in `data` while `changed` is again an empty list.
   """
 
   @moduledoc since: "0.1.0"
@@ -19,7 +21,16 @@ defmodule Carbonite.Change do
 
   if Code.ensure_loaded?(Jason.Encoder) do
     @derive {Jason.Encoder,
-             only: [:id, :op, :table_prefix, :table_name, :table_pk, :data, :changed]}
+             only: [
+               :id,
+               :op,
+               :table_prefix,
+               :table_name,
+               :table_pk,
+               :data,
+               :changed,
+               :changed_from
+             ]}
   end
 
   @primary_key false
@@ -33,8 +44,9 @@ defmodule Carbonite.Change do
           table_prefix: String.t(),
           table_name: String.t(),
           table_pk: nil | [String.t()],
-          data: nil | map(),
+          data: map(),
           changed: [String.t()],
+          changed_from: nil | map(),
           transaction: Ecto.Association.NotLoaded.t() | Carbonite.Transaction.t(),
           transaction_xact_id: non_neg_integer()
         }
@@ -47,6 +59,7 @@ defmodule Carbonite.Change do
     field(:table_pk, {:array, :string})
     field(:data, :map)
     field(:changed, {:array, :string})
+    field(:changed_from, :map)
 
     belongs_to(:transaction, Carbonite.Transaction)
 

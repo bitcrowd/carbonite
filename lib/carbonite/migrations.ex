@@ -18,7 +18,7 @@ defmodule Carbonite.Migrations do
   # --------------------------------- patch levels ---------------------------------
 
   @initial_patch 1
-  @current_patch 4
+  @current_patch 5
 
   @doc false
   @spec initial_patch :: non_neg_integer()
@@ -173,6 +173,7 @@ defmodule Carbonite.Migrations do
                           (defaults to `["id"]`, set to `[]` to disable)
   * `excluded_columns` is a list of columns to exclude from change captures
   * `filtered_columns` is a list of columns that appear as '[FILTERED]' in the data
+  * `store_changed_from` is a boolean defining whether the `changed_from` field should be filled
   * `mode` is either `:capture` or `:ignore` and defines the default behaviour of the trigger
 
   ## Example
@@ -195,6 +196,10 @@ defmodule Carbonite.Migrations do
 
   def put_trigger_config(table_name, :mode, value, opts) when value in [:capture, :ignore] do
     do_put_trigger_config(table_name, :mode, "'#{value}'", opts)
+  end
+
+  def put_trigger_config(table_name, :store_changed_from, value, opts) when is_boolean(value) do
+    do_put_trigger_config(table_name, :store_changed_from, value, opts)
   end
 
   defp do_put_trigger_config(table_name, field, value, opts) do

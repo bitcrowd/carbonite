@@ -36,12 +36,13 @@ defmodule Carbonite.TransactionTest do
           changes: [
             %Carbonite.Change{
               id: 1,
-              op: :insert,
+              op: :update,
               table_prefix: "default",
               table_name: "rabbits",
               table_pk: ["1"],
               data: %{"name" => "Jack"},
-              changed: ["name"]
+              changed: ["name"],
+              changed_from: %{"name" => "Jane"}
             }
           ]
         }
@@ -53,9 +54,10 @@ defmodule Carbonite.TransactionTest do
                  "changes" => [
                    %{
                      "changed" => ["name"],
+                     "changed_from" => %{"name" => "Jane"},
                      "data" => %{"name" => "Jack"},
                      "id" => 1,
-                     "op" => "insert",
+                     "op" => "update",
                      "table_name" => "rabbits",
                      "table_pk" => ["1"],
                      "table_prefix" => "default"

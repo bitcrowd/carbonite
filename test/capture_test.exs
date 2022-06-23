@@ -69,6 +69,7 @@ defmodule CaptureTest do
                  "table_name" => "rabbits",
                  "op" => "insert",
                  "changed" => [],
+                 "changed_from" => nil,
                  "data" => %{"id" => _, "name" => "Jack"}
                }
              ] = select_changes()
@@ -85,11 +86,13 @@ defmodule CaptureTest do
                %{
                  "op" => "insert",
                  "changed" => [],
+                 "changed_from" => nil,
                  "data" => %{"id" => _, "name" => "Jack"}
                },
                %{
                  "op" => "update",
                  "changed" => ["name"],
+                 "changed_from" => %{"name" => "Jack"},
                  "data" => %{"id" => _, "name" => "Jane"}
                }
              ] = select_changes()
@@ -103,6 +106,18 @@ defmodule CaptureTest do
       end)
 
       assert [%{"op" => "insert"}] = select_changes()
+    end
+
+    test "changed_from tracking is optional" do
+      query!("UPDATE carbonite_default.triggers SET store_changed_from = FALSE;")
+
+      TestRepo.transaction(fn ->
+        insert_transaction()
+        insert_jack()
+        query!("UPDATE rabbits SET name = 'Jane' WHERE name = 'Jack';")
+      end)
+
+      assert [%{"changed_from" => nil}, %{"changed_from" => nil}] = select_changes()
     end
 
     test "INSERT ON CONFLICT NOTHING is not tracked" do
@@ -153,11 +168,13 @@ defmodule CaptureTest do
                %{
                  "op" => "insert",
                  "changed" => [],
+                 "changed_from" => nil,
                  "data" => %{"id" => _, "name" => "Jack"}
                },
                %{
                  "op" => "delete",
                  "changed" => [],
+                 "changed_from" => nil,
                  "data" => %{"id" => _, "name" => "Jack"}
                }
              ] = select_changes()
