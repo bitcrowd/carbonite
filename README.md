@@ -124,6 +124,7 @@ defmodule MyApp.Repo.Migrations.InstallCarbonite do
     Carbonite.Migrations.up(2)
     Carbonite.Migrations.up(3)
     Carbonite.Migrations.up(4)
+    Carbonite.Migrations.up(5)
 
     # For each table that you want to capture changes of, you need to install the trigger.
     Carbonite.Migrations.create_trigger(:rabbits)
@@ -143,6 +144,7 @@ defmodule MyApp.Repo.Migrations.InstallCarbonite do
     Carbonite.Migrations.drop_trigger(:rabbits)
 
     # Drop the Carbonite tables.
+    Carbonite.Migrations.down(5)
     Carbonite.Migrations.down(4)
     Carbonite.Migrations.down(3)
     Carbonite.Migrations.down(2)
@@ -207,6 +209,14 @@ If you still want to capture changes to a column (in the `changed` field), but d
 
 ```elixir
 Carbonite.Migrations.put_trigger_config(:rabbits, :filtered_columns, ["age"])
+```
+
+#### Persisting replaced data on `UPDATE` statements
+
+By default, the `changes` table will track the current version of a record in its `data` field and a list of changed fields in the `changed` column. Optionally, you can decide to store the replaced data (the "diff") in the `changed_from` field, by enabling the `store_changed_from` option for a trigger. This defaults to `false`.
+
+```elixir
+Carbonite.Migrations.put_trigger_config(:rabbits, :store_changed_from, true)
 ```
 
 ### Partitioning the Audit Trail

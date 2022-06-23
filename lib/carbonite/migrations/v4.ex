@@ -15,77 +15,8 @@ defmodule Carbonite.Migrations.V4 do
   # current xact id, even if new `transactions` records have been inserted during the migration.
   @xact_id_buffer 5000
 
-  @impl true
-  @spec up([up_option()]) :: :ok
-  def up(opts) do
-    prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
-
-    lock_changes(prefix)
-
-    # ------------- Change constraints -----------
-
-    temporarily_drop_fk_on_changes(prefix, fn ->
-      rename_id_column(prefix, "transactions", :id, :xact_id)
-      rename_id_column(prefix, "changes", :transaction_id, :transaction_xact_id)
-
-      squish_and_execute("ALTER TABLE #{prefix}.transactions DROP CONSTRAINT transactions_pkey;")
-
-      squish_and_execute(
-        "ALTER TABLE #{prefix}.transactions ADD PRIMARY KEY (id) INCLUDE (xact_id);"
-      )
-    end)
-
-    temporarily_drop_default_on_outboxes(prefix, "0", fn ->
-      change_type(prefix, "outboxes", "last_transaction_id", "BIGINT")
-    end)
-
-    # ------------- New ID sequence --------------
-
-    %Postgrex.Result{rows: [[seq_start_with]]} =
-      repo().query!("SELECT pg_current_xact_id()::TEXT::BIGINT + #{@xact_id_buffer};")
-
-    """
-    CREATE SEQUENCE #{prefix}.transactions_id_seq
-    START WITH #{seq_start_with}
-    OWNED BY #{prefix}.transactions.id;
-    """
-    |> squish_and_execute()
-
-    """
-    CREATE OR REPLACE FUNCTION #{prefix}.set_transaction_id() RETURNS TRIGGER AS
-    $body$
-    BEGIN
-      BEGIN
-        /* verify that no previous INSERT within current transaction (with same id) */
-        IF
-          EXISTS(
-            SELECT 1 FROM #{prefix}.transactions
-            WHERE id = COALESCE(NEW.id, CURRVAL('#{prefix}.transactions_id_seq'))
-            AND xact_id = COALESCE(NEW.xact_id, pg_current_xact_id())
-          )
-        THEN
-          NEW.id = COALESCE(NEW.id, CURRVAL('#{prefix}.transactions_id_seq'));
-        END IF;
-      EXCEPTION WHEN object_not_in_prerequisite_state THEN
-        /* when NEXTVAL has never been called within session, we're good */
-      END;
-
-      NEW.id = COALESCE(NEW.id, NEXTVAL('#{prefix}.transactions_id_seq'));
-      NEW.xact_id = COALESCE(NEW.xact_id, pg_current_xact_id());
-
-      RETURN NEW;
-    END
-    $body$
-    LANGUAGE plpgsql;
-    """
-    |> squish_and_execute()
-
-    # ------------- override_xact_id -------------
-
-    rename(table("triggers", prefix: prefix), :override_transaction_id, to: :override_xact_id)
-
-    # ------------- Capture Function -------------
-
+  @spec create_capture_changes_procedure(prefix()) :: :ok
+  def create_capture_changes_procedure(prefix) do
     """
     CREATE OR REPLACE FUNCTION #{prefix}.capture_changes() RETURNS TRIGGER AS
     $body$
@@ -190,6 +121,82 @@ defmodule Carbonite.Migrations.V4 do
     LANGUAGE plpgsql;
     """
     |> squish_and_execute()
+
+    :ok
+  end
+
+  @impl true
+  @spec up([up_option()]) :: :ok
+  def up(opts) do
+    prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
+
+    lock_changes(prefix)
+
+    # ------------- Change constraints -----------
+
+    temporarily_drop_fk_on_changes(prefix, fn ->
+      rename_id_column(prefix, "transactions", :id, :xact_id)
+      rename_id_column(prefix, "changes", :transaction_id, :transaction_xact_id)
+
+      squish_and_execute("ALTER TABLE #{prefix}.transactions DROP CONSTRAINT transactions_pkey;")
+
+      squish_and_execute(
+        "ALTER TABLE #{prefix}.transactions ADD PRIMARY KEY (id) INCLUDE (xact_id);"
+      )
+    end)
+
+    temporarily_drop_default_on_outboxes(prefix, "0", fn ->
+      change_type(prefix, "outboxes", "last_transaction_id", "BIGINT")
+    end)
+
+    # ------------- New ID sequence --------------
+
+    %Postgrex.Result{rows: [[seq_start_with]]} =
+      repo().query!("SELECT pg_current_xact_id()::TEXT::BIGINT + #{@xact_id_buffer};")
+
+    """
+    CREATE SEQUENCE #{prefix}.transactions_id_seq
+    START WITH #{seq_start_with}
+    OWNED BY #{prefix}.transactions.id;
+    """
+    |> squish_and_execute()
+
+    """
+    CREATE OR REPLACE FUNCTION #{prefix}.set_transaction_id() RETURNS TRIGGER AS
+    $body$
+    BEGIN
+      BEGIN
+        /* verify that no previous INSERT within current transaction (with same id) */
+        IF
+          EXISTS(
+            SELECT 1 FROM #{prefix}.transactions
+            WHERE id = COALESCE(NEW.id, CURRVAL('#{prefix}.transactions_id_seq'))
+            AND xact_id = COALESCE(NEW.xact_id, pg_current_xact_id())
+          )
+        THEN
+          NEW.id = COALESCE(NEW.id, CURRVAL('#{prefix}.transactions_id_seq'));
+        END IF;
+      EXCEPTION WHEN object_not_in_prerequisite_state THEN
+        /* when NEXTVAL has never been called within session, we're good */
+      END;
+
+      NEW.id = COALESCE(NEW.id, NEXTVAL('#{prefix}.transactions_id_seq'));
+      NEW.xact_id = COALESCE(NEW.xact_id, pg_current_xact_id());
+
+      RETURN NEW;
+    END
+    $body$
+    LANGUAGE plpgsql;
+    """
+    |> squish_and_execute()
+
+    # ------------- override_xact_id -------------
+
+    rename(table("triggers", prefix: prefix), :override_transaction_id, to: :override_xact_id)
+
+    # ------------- Capture Function -------------
+
+    create_capture_changes_procedure(prefix)
 
     :ok
   end

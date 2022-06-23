@@ -1,3 +1,11 @@
+## Unreleased
+
+**New migration patches:** 5
+
+### Added
+
+* Optional tracking of previous data in changes. Set the `store_changed_from` trigger option.
+
 ## [0.5.0] - 2022-02-25
 
 **New migration patches:** 4

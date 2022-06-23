@@ -8,13 +8,16 @@ defmodule Carbonite.TestRepo.Migrations.InstallCarbonite do
     Carbonite.Migrations.up(2)
     Carbonite.Migrations.up(3)
     Carbonite.Migrations.up(4)
+    Carbonite.Migrations.up(5)
     Carbonite.Migrations.create_trigger(:rabbits)
     Carbonite.Migrations.put_trigger_config(:rabbits, :excluded_columns, ["age"])
+    Carbonite.Migrations.put_trigger_config(:rabbits, :store_changed_from, true)
     Carbonite.Migrations.create_outbox("rabbits")
   end
 
   def down do
     Carbonite.Migrations.drop_trigger(:rabbits)
+    Carbonite.Migrations.down(5)
     Carbonite.Migrations.down(4)
     Carbonite.Migrations.down(3)
     Carbonite.Migrations.down(2)
