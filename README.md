@@ -456,7 +456,6 @@ The amazing Carbonite logo has been designed by [Petra Herberger](https://www.pe
 
 ## Copyright and License
 
-Copyright © 2021, Bitcrowd GmbH.
+Copyright © 2021–2022, Bitcrowd GmbH.
 
-You may use and redistribute Carbonite and its source code under the Apache 2.0 License, see the
-[LICENSE](LICENSE) file for details.
+You may use and redistribute Carbonite and its source code under the Apache 2.0 License, see the [LICENSE](LICENSE) file for details.
