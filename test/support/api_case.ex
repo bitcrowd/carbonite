@@ -64,5 +64,5 @@ defmodule Carbonite.APICase do
     |> TestRepo.all()
   end
 
-  def ids(set), do: Enum.map(set, & &1.id)
+  def ids(set), do: set |> Enum.map(& &1.id) |> Enum.sort()
 end
