@@ -3,6 +3,7 @@
 defmodule Carbonite.MigrationsTest do
   use ExUnit.Case, async: false
   import ExUnit.CaptureLog
+  import Ecto.Query, only: [order_by: 2]
 
   defmodule UnboxedTestRepo do
     use Ecto.Repo,
@@ -59,7 +60,9 @@ defmodule Carbonite.MigrationsTest do
   end
 
   defp select_all_transactions do
-    UnboxedTestRepo.all(Carbonite.Query.transactions(preload: true))
+    Carbonite.Query.transactions(preload: true)
+    |> order_by({:asc, :inserted_at})
+    |> UnboxedTestRepo.all()
   end
 
   defp delete_all_transactions do
