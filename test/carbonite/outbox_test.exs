@@ -3,7 +3,8 @@
 defmodule Carbonite.OutboxTest do
   use Carbonite.APICase, async: true
   import Carbonite.Outbox
-  alias Carbonite.Outbox
+  alias Carbonite.{Outbox, TestRepo}
+  alias Ecto.Adapters.SQL
 
   describe "changeset/2" do
     test "casts attributes" do
@@ -17,6 +18,13 @@ defmodule Carbonite.OutboxTest do
       cs = changeset(%Outbox{}, %{last_transaction_id: 500_000, memo: nil})
       refute cs.valid?
       assert [{:memo, {_msg, [validation: :required]}}] = cs.errors
+    end
+  end
+
+  describe "Schema" do
+    test "uses the default carbonite_prefix" do
+      {sql, _} = SQL.to_sql(:all, TestRepo, Outbox)
+      assert String.contains?(sql, "\"carbonite_default\".\"outboxes\"")
     end
   end
 end

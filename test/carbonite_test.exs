@@ -4,6 +4,7 @@ defmodule CarboniteTest do
   use Carbonite.APICase, async: true
   import Carbonite
   alias Carbonite.{Outbox, Rabbit, TestRepo, Transaction}
+  alias Ecto.Adapters.SQL
 
   defp insert_jack do
     %{name: "Jack", age: 99}
@@ -46,6 +47,14 @@ defmodule CarboniteTest do
 
       assert tx1.meta == %{"foo" => 1}
       assert tx2.meta == %{"foo" => 1}
+    end
+
+    test "carbonite_prefix option works as expected" do
+      assert {:ok, _tx} =
+               insert_transaction(TestRepo, %{}, carbonite_prefix: "alternate_test_schema")
+
+      assert %{num_rows: 1} =
+               SQL.query!(TestRepo, "SELECT * FROM alternate_test_schema.transactions")
     end
   end
 

@@ -8,6 +8,7 @@ defmodule Carbonite.Trigger do
   @moduledoc since: "0.1.0"
 
   use Ecto.Schema
+  use Carbonite.Prefix
 
   @primary_key {:id, :id, autogenerate: true}
   @timestamps_opts [type: :utc_datetime_usec]

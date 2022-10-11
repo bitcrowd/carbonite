@@ -18,6 +18,7 @@ defmodule Carbonite.Change do
   @moduledoc since: "0.1.0"
 
   use Ecto.Schema
+  use Carbonite.Prefix
 
   if Code.ensure_loaded?(Jason.Encoder) do
     @derive {Jason.Encoder,
