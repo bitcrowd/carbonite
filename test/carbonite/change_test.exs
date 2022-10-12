@@ -2,6 +2,15 @@
 
 defmodule Carbonite.ChangeTest do
   use Carbonite.APICase, async: true
+  alias Carbonite.{Change, TestRepo}
+  alias Ecto.Adapters.SQL
+
+  describe "Schema" do
+    test "uses the default carbonite_prefix" do
+      {sql, _} = SQL.to_sql(:all, TestRepo, Change)
+      assert String.contains?(sql, ~s("carbonite_default"."changes"))
+    end
+  end
 
   describe "Jason.Encoder implementation" do
     test "Carbonite.Change can be encoded to JSON" do

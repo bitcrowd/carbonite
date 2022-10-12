@@ -14,7 +14,8 @@ defmodule Carbonite do
   @moduledoc since: "0.1.0"
 
   import Ecto.Query
-  alias Carbonite.{Outbox, Query, Transaction, Trigger}
+  alias Carbonite.{Outbox, Query, Schema, Transaction, Trigger}
+  require Schema
 
   @type prefix :: binary()
   @type repo :: Ecto.Repo.t()
@@ -24,7 +25,7 @@ defmodule Carbonite do
   @doc "Returns the default audit trail prefix."
   @doc since: "0.1.0"
   @spec default_prefix() :: prefix()
-  def default_prefix, do: "carbonite_default"
+  def default_prefix, do: Schema.default_prefix()
 
   @doc """
   Inserts a `t:Carbonite.Transaction.t/0` into the database.

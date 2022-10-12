@@ -5,8 +5,8 @@ defmodule Carbonite.TestRepo.Migrations.CreateRabbits do
 
   def change do
     create table(:rabbits) do
-      add :name, :string
-      add :age, :integer
+      add(:name, :string)
+      add(:age, :integer)
     end
   end
 end

@@ -17,7 +17,7 @@ defmodule Carbonite.Change do
 
   @moduledoc since: "0.1.0"
 
-  use Ecto.Schema
+  use Carbonite.Schema
 
   if Code.ensure_loaded?(Jason.Encoder) do
     @derive {Jason.Encoder,
@@ -34,7 +34,6 @@ defmodule Carbonite.Change do
   end
 
   @primary_key false
-  @timestamps_opts [type: :utc_datetime_usec]
 
   @type id :: non_neg_integer()
 

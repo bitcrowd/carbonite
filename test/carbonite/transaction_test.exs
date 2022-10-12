@@ -2,7 +2,16 @@
 
 defmodule Carbonite.TransactionTest do
   use Carbonite.APICase, async: true
-  import Carbonite.Transaction
+  alias Carbonite.{TestRepo, Transaction}
+  alias Ecto.Adapters.SQL
+  import Transaction
+
+  describe "Schema" do
+    test "uses the default carbonite_prefix" do
+      {sql, _} = SQL.to_sql(:all, TestRepo, Transaction)
+      assert String.contains?(sql, ~s("carbonite_default"."transactions"))
+    end
+  end
 
   describe "changeset/1" do
     test "transaction_changesets an Ecto.Changeset for a transaction" do

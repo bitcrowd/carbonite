@@ -6,6 +6,10 @@
 
 * Optional tracking of previous data in changes. Set the `store_changed_from` trigger option.
 
+### Changed 
+
+* Added `@schema_prefix "carbonite_default"` on all schemas. This will enable the manual usage of `Repo.insert/2` & friends on transactions without specifying a prefix, when using the default carbonite prefix.
+
 ## [0.5.0] - 2022-02-25
 
 **New migration patches:** 4

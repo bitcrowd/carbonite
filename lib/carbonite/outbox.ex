@@ -10,11 +10,10 @@ defmodule Carbonite.Outbox do
 
   @moduledoc since: "0.4.0"
 
-  use Ecto.Schema
+  use Carbonite.Schema
   import Ecto.Changeset
 
   @primary_key false
-  @timestamps_opts [type: :utc_datetime_usec]
 
   @type name() :: String.t()
   @type memo() :: map()

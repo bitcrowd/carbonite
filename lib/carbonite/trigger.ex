@@ -7,10 +7,9 @@ defmodule Carbonite.Trigger do
 
   @moduledoc since: "0.1.0"
 
-  use Ecto.Schema
+  use Carbonite.Schema
 
   @primary_key {:id, :id, autogenerate: true}
-  @timestamps_opts [type: :utc_datetime_usec]
 
   @type id :: non_neg_integer()
   @type mode :: :capture | :ignore
