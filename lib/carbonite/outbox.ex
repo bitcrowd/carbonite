@@ -10,7 +10,6 @@ defmodule Carbonite.Outbox do
 
   @moduledoc since: "0.4.0"
 
-  use Ecto.Schema
   use Carbonite.Schema
   import Ecto.Changeset
 

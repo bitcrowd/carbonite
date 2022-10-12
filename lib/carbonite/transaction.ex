@@ -9,7 +9,6 @@ defmodule Carbonite.Transaction do
 
   @moduledoc since: "0.1.0"
 
-  use Ecto.Schema
   use Carbonite.Schema
   import Ecto.Changeset
 
