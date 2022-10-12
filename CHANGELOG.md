@@ -1,5 +1,7 @@
 ## Unreleased
 
+## [0.6.0] - 2022-10-12
+
 **New migration patches:** 5
 
 ### Added
