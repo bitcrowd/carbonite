@@ -10,7 +10,7 @@ defmodule Carbonite.Transaction do
   @moduledoc since: "0.1.0"
 
   use Ecto.Schema
-  use Carbonite.Prefix
+  use Carbonite.Schema
   import Ecto.Changeset
 
   if Code.ensure_loaded?(Jason.Encoder) do
@@ -18,7 +18,6 @@ defmodule Carbonite.Transaction do
   end
 
   @primary_key false
-  @timestamps_opts [type: :utc_datetime_usec]
 
   @type meta :: map()
 
