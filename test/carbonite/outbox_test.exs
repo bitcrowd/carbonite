@@ -24,7 +24,7 @@ defmodule Carbonite.OutboxTest do
   describe "Schema" do
     test "uses the default carbonite_prefix" do
       {sql, _} = SQL.to_sql(:all, TestRepo, Outbox)
-      assert String.contains?(sql, "\"carbonite_default\".\"outboxes\"")
+      assert String.contains?(sql, ~s("carbonite_default"."outboxes"))
     end
   end
 end

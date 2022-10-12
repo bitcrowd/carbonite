@@ -8,7 +8,7 @@ defmodule Carbonite.ChangeTest do
   describe "Schema" do
     test "uses the default carbonite_prefix" do
       {sql, _} = SQL.to_sql(:all, TestRepo, Change)
-      assert String.contains?(sql, "\"carbonite_default\".\"changes\"")
+      assert String.contains?(sql, ~s("carbonite_default"."changes"))
     end
   end
 

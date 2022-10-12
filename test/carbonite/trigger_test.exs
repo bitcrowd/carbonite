@@ -6,7 +6,7 @@ defmodule Carbonite.TriggerTest do
   describe "Schema" do
     test "uses the default carbonite_prefix" do
       {sql, _} = SQL.to_sql(:all, TestRepo, Trigger)
-      assert String.contains?(sql, "\"carbonite_default\".\"triggers\"")
+      assert String.contains?(sql, ~s("carbonite_default"."triggers"))
     end
   end
 end

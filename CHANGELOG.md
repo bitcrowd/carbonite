@@ -8,7 +8,7 @@
 
 ### Changed 
 
-* Added `@schema_prefix "carbonite_default"` on all schemas. This will enable the usage of `Repo.insert` etc on transactions without specifying a prefix, when using the default carbonite prefix.
+* Added `@schema_prefix "carbonite_default"` on all schemas. This will enable the manual usage of `Repo.insert/2` & friends on transactions without specifying a prefix, when using the default carbonite prefix.
 
 ## [0.5.0] - 2022-02-25
 
