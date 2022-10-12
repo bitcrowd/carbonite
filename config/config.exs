@@ -7,7 +7,8 @@ if config_env() in [:dev, :test] do
     database: "carbonite_#{config_env()}",
     username: "postgres",
     password: "postgres",
-    hostname: "localhost"
+    hostname: "localhost",
+    priv: "test/support/test_repo"
 
   config :carbonite, ecto_repos: [Carbonite.TestRepo]
 end
