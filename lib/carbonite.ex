@@ -14,7 +14,7 @@ defmodule Carbonite do
   @moduledoc since: "0.1.0"
 
   import Ecto.Query
-  alias Carbonite.{Outbox, Schema, Query, Transaction, Trigger}
+  alias Carbonite.{Outbox, Query, Schema, Transaction, Trigger}
   require Schema
 
   @type prefix :: binary()
