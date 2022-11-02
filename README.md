@@ -274,14 +274,15 @@ Carbonite.Transaction.put_meta(:user_id, ...)
 
 If you manipulate data inside your transactions, as usual a `Carbonite.Transaction` needs to be inserted before any other statements. You can use `Carbonite.Migrations.insert_migration_transaction/1` to insert a transaction with a `meta` attribute populated from the migration module.
 
+```elixir
+import Carbonite.Migrations
 
-    import Carbonite.Migrations
+def change do
+  insert_migration_transaction()
 
-    def change do
-      insert_migration_transaction()
-
-      execute("UPDATE ...")
-    end
+  execute("UPDATE ...")
+end
+```
 
 ## Retrieving data
 
