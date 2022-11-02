@@ -1,5 +1,13 @@
 ## Unreleased
 
+### Added
+
+* Added `:initially` option to `create_trigger/2` to create triggers with `IMMEDIATE DEFERRED` constraint option. This allows to conditionally insert the `Carbonite.Transaction` record at the end of the transaction. In order to use this for already existing triggers, you need to drop them (`drop_trigger/2`) and re-create them.
+
+### Changed
+
+* Made the changes trigger `DEFERRABLE`. As part of the `:initially` option of `create_trigger/2`, we chose to make triggers `DEFERRABLE` by default. Again, for any existing triggers, this won't take effect, but newly created triggers will use this constraint option.
+
 ## [0.6.0] - 2022-10-12
 
 **New migration patches:** 5
