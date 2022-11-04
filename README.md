@@ -306,8 +306,8 @@ Outcome (1) and (3) above are engrained in Carbonite's trigger logic and can not
 The second outcome can be considered "intended behaviour" and there are good reasons for keeping the `Carbonite.Transaction` around. However, if your use-case indicates that you should not store `Carbonite.Transactions` when nothing was changed, you need to:
 
 1. Set the trigger to `INITIALLY DEFERRED` when it is created.
-2. Re-order your application logic ...
-3. ... and only insert the transaction when needed.
+2. Re-order your application logic.
+3. Only insert the transaction when needed.
 
 ```elixir
 # In the migration where the trigger is created
