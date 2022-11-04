@@ -139,7 +139,7 @@ defmodule Carbonite.Migrations.V5 do
   def up(opts) do
     prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
-    lock_changes(prefix)
+    lock_table(prefix, "changes")
 
     # ------------- `changed_from` ---------------
 
@@ -165,7 +165,7 @@ defmodule Carbonite.Migrations.V5 do
   def down(opts) do
     prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
-    lock_changes(prefix)
+    lock_table(prefix, "changes")
 
     # ------------- `changed_from` ------------
 
@@ -182,9 +182,5 @@ defmodule Carbonite.Migrations.V5 do
     V4.create_capture_changes_procedure(prefix)
 
     :ok
-  end
-
-  defp lock_changes(prefix) do
-    squish_and_execute("LOCK TABLE #{prefix}.changes IN EXCLUSIVE MODE;")
   end
 end

@@ -16,8 +16,8 @@ defmodule CaptureTest do
     query!("INSERT INTO carbonite_default.transactions (inserted_at) VALUES (NOW());")
   end
 
-  defp insert_jack do
-    query!("INSERT INTO rabbits (name, age) VALUES ('Jack', 99);")
+  defp insert_jack(table \\ "rabbits") do
+    query!("INSERT INTO #{table} (name, age) VALUES ('Jack', 99);")
   end
 
   defp upsert_jack(new_name, do_clause) do
@@ -33,8 +33,8 @@ defmodule CaptureTest do
     |> postgrex_result_to_structs()
   end
 
-  defp select_rabbits do
-    "SELECT * FROM public.rabbits ORDER BY id DESC;"
+  defp select_rabbits(table \\ "rabbits") do
+    "SELECT * FROM #{table} ORDER BY id DESC;"
     |> query!()
     |> postgrex_result_to_structs()
   end
@@ -51,6 +51,16 @@ defmodule CaptureTest do
       columns
       |> Enum.zip(row)
       |> Map.new()
+    end)
+  end
+
+  defp transaction_with_simulated_commit(fun) do
+    TestRepo.transaction(fn ->
+      fun.()
+
+      # We simulate the end of the transaction by setting the constraint to immediate now.
+      # Otherwise when Ecto's SQL sandbox rolls back the transaction, our trigger never fires.
+      query!("SET CONSTRAINTS ALL IMMEDIATE;")
     end)
   end
 
@@ -263,6 +273,31 @@ defmodule CaptureTest do
                        insert_transaction()
                      end
       end)
+    end
+
+    test "initially deferred trigger allows late transaction insertion" do
+      transaction_with_simulated_commit(fn ->
+        # deferred_rabbits have a trigger with INITIALLY DEFERRED constraint, so we can insert
+        # a record before inserting the transaction.
+        insert_jack("deferred_rabbits")
+        insert_transaction()
+      end)
+
+      assert [%{"table_name" => "deferred_rabbits"}] = select_changes()
+    end
+
+    test "initially deferred trigger still requires a transaction to be inserted" do
+      msg =
+        "ERROR 23503 (foreign_key_violation) INSERT on table public.deferred_rabbits " <>
+          "without prior INSERT into carbonite_default.transactions"
+
+      assert_raise Postgrex.Error, msg, fn ->
+        transaction_with_simulated_commit(fn ->
+          insert_jack("deferred_rabbits")
+        end)
+      end
+
+      assert select_rabbits("deferred_rabbits") == []
     end
   end
 
