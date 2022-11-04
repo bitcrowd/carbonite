@@ -91,6 +91,17 @@ defmodule Carbonite.Migrations do
   * `table_prefix` is the name of the schema the table lives in
   * `carbonite_prefix` is the schema of the audit trail, defaults to `"carbonite_default"`
   * `initially` can be either of `:immediate` or `:deferred`, defaults to `:immediate`
+
+  ## Deferred triggers
+
+  You may create the trigger with `initially: :deferred` option to make it run at the end of your
+  database transactions. In combination with application logic that only conditionally inserts
+  the `Carbonite.Transaction`, this can be used to avoid storing "empty" transactions, i.e.
+  `Carbonite.Transaction` records without associated `Carbonite.Change`.
+
+  Please be aware that this is not recommended by the Carbonite team. Instead we recommend to
+  retain the empty transactions and optionally remove them in a preprocessing step or your
+  outbox mechanism. Make sure you know how deferred triggers work before using this option.
   """
   @doc since: "0.4.0"
   @spec create_trigger(table_name()) :: :ok

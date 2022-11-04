@@ -321,6 +321,8 @@ Ecto.Multi.new()
 |> MyApp.Repo.transaction()
 ```
 
+See `Carbonite.Migrations.create_trigger/2` for further information.
+
 ## Retrieving data
 
 Of course, persisting the audit trail is not an end in itself. At some point you will want to read the data back and make it accessible to the user. `Carbonite.Query` offers a small suite of helper functions that make it easier to query the database for `Transaction` and `Change` records.
