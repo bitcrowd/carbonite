@@ -101,7 +101,7 @@
 * Store primary key(s) on changes table and index them
 * Add `Carbonite.Query` module
   - `current_transaction/2` allows to fetch the ongoing transaction (for sandbox tests)
-  - `changes/2` allows to fetch the changes of an invidual source record
+  - `changes/2` allows to fetch the changes of an individual source record
 * Update Postgrex to 0.15.11 and drop local `Xid8` type
 * Add `mode` field to trigger (capture or ignore)
 * Add "override mode" reversing the `mode` option for the current transaction to enable/disable capturing on demand (e.g. in tests)

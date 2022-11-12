@@ -337,7 +337,7 @@ Carbonite.Query.transactions()
 |> MyApp.Repo.all()
 ```
 
-### Fetching changes of invididual records
+### Fetching changes of individual records
 
 The `Carbonite.Query.changes/2` function constructs an `t:Ecto.Query.t/0` from a schema struct, loading all changes stored for the given source record.
 
