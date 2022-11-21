@@ -465,7 +465,7 @@ defmodule MyApp.Repo.Migrations.InstallCarbonite do
   end
 end
 
-# test/support/carbonite_helpers.exs
+# test/support/carbonite_helpers.ex
 defmodule MyApp.CarboniteHelpers do
   def carbonite_override_mode(_) do
     Carbonite.override_mode(MyApp.Repo)
@@ -487,7 +487,7 @@ describe "my_operation/0" do
   test "auditing" do
     my_operation()
 
-    assert current_transaction_meta() == %{"type" => "some_operation"}
+    assert current_transaction_meta() == {:ok, %{"type" => "some_operation"}}
   end
 end
 ```
