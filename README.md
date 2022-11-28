@@ -247,6 +247,20 @@ Ecto.Multi.new()
 
 As you can see, the `Carbonite.Transaction` is a great place to store metadata for the operation. A `type` field can be used to categorize the transactions. A `user_id` would be a good candidate for a transaction log, as well.
 
+### Without Ecto.Multi 
+
+If you have a situation, where you want to insert a transaction without `Ecto.Multi`, then you can use `Carbonite.insert_transation/3`. Although grouping multiple operations into one transaction fits the use-case of `Ecto.Multi` perfectly so `Carbonite.Multi.insert_transaction/2` is still the preferred way here.
+
+``` elixir
+MyApp.Repo.transaction(fn ->
+  {:ok, _} = Carbonite.insert_transaction(MyApp.Repo, %{meta: %{type: "rabbit_inserted"}})
+
+  params
+  |> MyApp.Rabbit.create_changeset()
+  |> MyApp.Repo.insert!
+end)
+```
+
 ### Building a changeset for manual insertion
 
 If you don't have the luxury of an `Ecto.Multi`, you can create a changeset for a `Carbonite.Transaction` using `Carbonite.Transaction.changeset/1`:
