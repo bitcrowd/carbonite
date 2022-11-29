@@ -31,7 +31,8 @@ defmodule Carbonite.MixProject do
       homepage_url: "https://github.com/bitcrowd/carbonite",
       docs: [
         main: "Carbonite",
-        extras: ["LICENSE", "README.md", "CHANGELOG.md": [title: "Changelog"]],
+        logo: ".logo_for_docs.png",
+        extras: ["CHANGELOG.md": [title: "Changelog"], LICENSE: [title: "License"]],
         source_ref: "v#{@version}",
         source_url: "https://github.com/bitcrowd/carbonite",
         formatters: ["html"],

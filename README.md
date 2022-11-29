@@ -288,14 +288,54 @@ Carbonite.Transaction.put_meta(:user_id, ...)
 
 If you manipulate data inside your transactions, as usual a `Carbonite.Transaction` needs to be inserted before any other statements. You can use `Carbonite.Migrations.insert_migration_transaction/1` to insert a transaction with a `meta` attribute populated from the migration module.
 
+```elixir
+import Carbonite.Migrations
 
-    import Carbonite.Migrations
+def change do
+  insert_migration_transaction()
 
-    def change do
-      insert_migration_transaction()
+  execute("UPDATE ...")
+end
+```
 
-      execute("UPDATE ...")
-    end
+### "Empty" transactions when no changes have been recorded
+
+By default, Carbonite will store the `Carbonite.Transaction` record regardless of whether in the corresponding database transaction any changes were recorded or not. In fact, there is nothing special about the behaviour of the following code:
+
+```elixir
+Ecto.Multi.new()
+|> Carbonite.Multi.insert_transaction(%{meta: %{type: "rabbit_inserted"}})
+|> Ecto.Multi.run(:rabbit, &maybe_insert_rabbit/2)
+|> MyApp.Repo.transaction()
+```
+
+Depending on the behaviour of `maybe_insert_rabbit/2`, the transaction may result in one of these outcomes:
+
+1. The transaction succeeds and the rabbit is inserted. A `Carbonite.Transaction` is recorded alongside a `Carbonite.Change`.
+2. The transaction succeeds but *no rabbit is inserted*. The `Carbonite.Transaction` is recorded but will be empty, that is, not associated to any `Carbonite.Change` records.
+3. The transaction fails and is rolled back. The `Carbonite.Transaction` is not persisted.
+
+Outcome (1) and (3) above are engrained in Carbonite's trigger logic and can not be changed.
+
+The second outcome can be considered "intended behaviour" and there are good reasons for keeping the `Carbonite.Transaction` around. However, if your use-case indicates that you should not store `Carbonite.Transactions` when nothing was changed, you need to:
+
+1. Set the trigger to `INITIALLY DEFERRED` when it is created.
+2. Re-order your application logic.
+3. Only insert the transaction when needed.
+
+```elixir
+# In the migration where the trigger is created
+Carbonite.Migrations.create_trigger(:rabbits, initially: "deferred")
+```
+
+```elixir
+Ecto.Multi.new()
+|> Ecto.Multi.run(:rabbit, &maybe_insert_rabbit/2)
+|> Ecto.Multi.run(:carbonite_transaction, &maybe_insert_carbonite_transaction/2)
+|> MyApp.Repo.transaction()
+```
+
+See `Carbonite.Migrations.create_trigger/2` for further information.
 
 ## Retrieving data
 
@@ -311,7 +351,7 @@ Carbonite.Query.transactions()
 |> MyApp.Repo.all()
 ```
 
-### Fetching changes of invididual records
+### Fetching changes of individual records
 
 The `Carbonite.Query.changes/2` function constructs an `t:Ecto.Query.t/0` from a schema struct, loading all changes stored for the given source record.
 
@@ -439,7 +479,7 @@ defmodule MyApp.Repo.Migrations.InstallCarbonite do
   end
 end
 
-# test/support/carbonite_helpers.exs
+# test/support/carbonite_helpers.ex
 defmodule MyApp.CarboniteHelpers do
   def carbonite_override_mode(_) do
     Carbonite.override_mode(MyApp.Repo)
@@ -461,7 +501,7 @@ describe "my_operation/0" do
   test "auditing" do
     my_operation()
 
-    assert current_transaction_meta() == %{"type" => "some_operation"}
+    assert current_transaction_meta() == {:ok, %{"type" => "some_operation"}}
   end
 end
 ```

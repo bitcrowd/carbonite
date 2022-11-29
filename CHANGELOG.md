@@ -1,5 +1,13 @@
 ## Unreleased
 
+### Added
+
+* Added `:initially` option to `create_trigger/2` to create triggers with `IMMEDIATE DEFERRED` constraint option. This allows to conditionally insert the `Carbonite.Transaction` record at the end of the transaction. In order to use this for already existing triggers, you need to drop them (`drop_trigger/2`) and re-create them.
+
+### Changed
+
+* Made the changes trigger `DEFERRABLE`. As part of the `:initially` option of `create_trigger/2`, we chose to make triggers `DEFERRABLE` by default. Again, for any existing triggers, this won't take effect, but newly created triggers will use this constraint option.
+
 ## [0.6.0] - 2022-10-12
 
 **New migration patches:** 5
@@ -93,7 +101,7 @@
 * Store primary key(s) on changes table and index them
 * Add `Carbonite.Query` module
   - `current_transaction/2` allows to fetch the ongoing transaction (for sandbox tests)
-  - `changes/2` allows to fetch the changes of an invidual source record
+  - `changes/2` allows to fetch the changes of an individual source record
 * Update Postgrex to 0.15.11 and drop local `Xid8` type
 * Add `mode` field to trigger (capture or ignore)
 * Add "override mode" reversing the `mode` option for the current transaction to enable/disable capturing on demand (e.g. in tests)

@@ -31,7 +31,12 @@ defmodule Carbonite.Migrations.Helper do
     |> List.wrap()
     |> Enum.map(&to_string/1)
     |> Enum.sort()
-    |> Enum.map(&"\"#{&1}\"")
-    |> Enum.join(",")
+    |> Enum.map_join(", ", &"\"#{&1}\"")
+  end
+
+  # Locks a table in exclusive mode for constraint modifications & co.
+  @spec lock_table(binary(), binary()) :: :ok
+  def lock_table(prefix, table) do
+    squish_and_execute("LOCK TABLE #{prefix}.#{table} IN EXCLUSIVE MODE;")
   end
 end

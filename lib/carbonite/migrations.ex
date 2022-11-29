@@ -81,6 +81,7 @@ defmodule Carbonite.Migrations do
   @default_table_prefix "public"
 
   @type trigger_option :: {:table_prefix, prefix()} | {:carbonite_prefix, prefix()}
+  @type create_trigger_option :: trigger_option() | {:initially, :deferred | :immediate}
 
   @doc """
   Installs a change capture trigger on a table.
@@ -89,18 +90,34 @@ defmodule Carbonite.Migrations do
 
   * `table_prefix` is the name of the schema the table lives in
   * `carbonite_prefix` is the schema of the audit trail, defaults to `"carbonite_default"`
+  * `initially` can be either of `:immediate` or `:deferred`, defaults to `:immediate`
+
+  ## Deferred triggers
+
+  You may create the trigger with `initially: :deferred` option to make it run at the end of your
+  database transactions. In combination with application logic that only conditionally inserts
+  the `Carbonite.Transaction`, this can be used to avoid storing "empty" transactions, i.e.
+  `Carbonite.Transaction` records without associated `Carbonite.Change`.
+
+  Please be aware that this is not recommended by the Carbonite team. Instead we recommend to
+  retain the empty transactions and optionally remove them in a preprocessing step or your
+  outbox mechanism. Make sure you know how deferred triggers work before using this option.
   """
   @doc since: "0.4.0"
   @spec create_trigger(table_name()) :: :ok
-  @spec create_trigger(table_name(), [trigger_option()]) :: :ok
+  @spec create_trigger(table_name(), [create_trigger_option()]) :: :ok
   def create_trigger(table_name, opts \\ []) do
     table_prefix = Keyword.get(opts, :table_prefix, @default_table_prefix)
     carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
+    initially = Keyword.get(opts, :initially, :immediate)
+
+    validate_initially_option!(initially)
 
     """
-    CREATE TRIGGER capture_changes_into_#{carbonite_prefix}_trigger
+    CREATE CONSTRAINT TRIGGER capture_changes_into_#{carbonite_prefix}_trigger
     AFTER INSERT OR UPDATE OR DELETE
     ON #{table_prefix}.#{table_name}
+    DEFERRABLE INITIALLY #{initially}
     FOR EACH ROW
     EXECUTE PROCEDURE #{carbonite_prefix}.capture_changes();
     """
@@ -124,6 +141,12 @@ defmodule Carbonite.Migrations do
     |> squish_and_execute()
 
     :ok
+  end
+
+  defp validate_initially_option!(initially) when initially in [:immediate, :deferred], do: :ok
+
+  defp validate_initially_option!(initially) do
+    raise("initially must be one of [:immediate, :deferred], but is #{inspect(initially)}")
   end
 
   @doc """
