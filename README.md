@@ -249,7 +249,7 @@ As you can see, the `Carbonite.Transaction` is a great place to store metadata f
 
 ### Without Ecto.Multi 
 
-If you have a situation, where you want to insert a transaction without `Ecto.Multi`, then you can use `Carbonite.insert_transation/3`. Although grouping multiple operations into one transaction fits the use-case of `Ecto.Multi` perfectly so `Carbonite.Multi.insert_transaction/2` is still the preferred way here.
+If you have a situation where you want to insert a transaction without `Ecto.Multi`, you can use `Carbonite.insert_transation/3`.
 
 ``` elixir
 MyApp.Repo.transaction(fn ->
