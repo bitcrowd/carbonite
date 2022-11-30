@@ -7,7 +7,7 @@ defmodule Carbonite.QueryTest do
   defp insert_rabbits(_) do
     {:ok, results} =
       Ecto.Multi.new()
-      |> Carbonite.Multi.insert_transaction()
+      |> Carbonite.Multi.insert_transaction(%{meta: %{type: "rabbits_inserted"}})
       |> Ecto.Multi.put(:params, %{name: "Jack", age: 99})
       |> Ecto.Multi.insert(:rabbit, &Rabbit.create_changeset(&1.params))
       |> Ecto.Multi.put(:params2, %{name: "Lily", age: 172})
@@ -68,6 +68,16 @@ defmodule Carbonite.QueryTest do
 
       assert TestRepo.count(Transaction) == 3
       assert TestRepo.count(Change) == 0
+    end
+
+    test "can be used to update the current transaction" do
+      transaction = Query.current_transaction() |> TestRepo.one()
+
+      transaction
+      |> Ecto.Changeset.cast(%{meta: Map.put(transaction.meta, "foo", "bar")}, [:meta])
+      |> TestRepo.update!()
+
+      assert %{"type" => "rabbits_inserted", "foo" => "bar"} = TestRepo.reload(transaction).meta
     end
   end
 
