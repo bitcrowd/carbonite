@@ -263,7 +263,7 @@ end)
 
 ### Building a changeset for manual insertion
 
-If you don't have the luxury of an `Ecto.Multi`, you can create a changeset for a `Carbonite.Transaction` using `Carbonite.Transaction.changeset/1`:
+Another alternative is creating a changeset for a `Carbonite.Transaction` using `Carbonite.Transaction.changeset/1`:
 
 ```elixir
 MyApp.Repo.transaction(fn ->
