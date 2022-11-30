@@ -311,7 +311,7 @@ The second outcome can be considered "intended behaviour" and there are good rea
 
 ```elixir
 # In the migration where the trigger is created
-Carbonite.Migrations.create_trigger(:rabbits, initially: "deferred")
+Carbonite.Migrations.create_trigger(:rabbits, initially: :deferred)
 ```
 
 ```elixir
