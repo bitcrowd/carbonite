@@ -77,6 +77,18 @@ defmodule CarboniteTest do
 
       assert get_transactions() == []
     end
+
+    test "carbonite_prefix option works as expected" do
+      insert_transaction(TestRepo)
+      insert_jack()
+
+      # Mode is :ignore in the alternate_test_schema, so override mode enables the trigger.
+      assert override_mode(TestRepo, carbonite_prefix: "alternate_test_schema") == :ok
+
+      assert_raise Postgrex.Error, ~r/without prior INSERT into alternate_test_schema/, fn ->
+        insert_jack()
+      end
+    end
   end
 
   describe "process/4" do

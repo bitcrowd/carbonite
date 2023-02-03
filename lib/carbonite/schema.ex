@@ -6,7 +6,6 @@ defmodule Carbonite.Schema do
   defmacro __using__(_opts) do
     quote do
       use Ecto.Schema
-      @schema_prefix "carbonite_default"
 
       @timestamps_opts [type: :utc_datetime_usec]
     end

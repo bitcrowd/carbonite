@@ -6,6 +6,7 @@
 
 ### Changed
 
+* Reverted the `@schema_prefix` addition from the schemas after it became clear that it prevents other functions (like `override_mode/2`) from working when dealing with non-default prefixes.
 * Made the changes trigger `DEFERRABLE`. As part of the `:initially` option of `create_trigger/2`, we chose to make triggers `DEFERRABLE` by default. Again, for any existing triggers, this won't take effect, but newly created triggers will use this constraint option.
 
 ## [0.6.0] - 2022-10-12
