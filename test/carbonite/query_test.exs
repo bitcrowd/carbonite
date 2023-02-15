@@ -127,7 +127,7 @@ defmodule Carbonite.QueryTest do
   end
 
   describe "outbox_done/1" do
-    setup [:insert_past_transactions]
+    setup [:insert_past_transactions, :insert_transaction_in_alternate_schema]
 
     defp outbox_done(opts \\ []) do
       opts
@@ -158,6 +158,14 @@ defmodule Carbonite.QueryTest do
       update_rabbits_outbox(%{last_transaction_id: 200_000})
 
       assert ids(outbox_done(min_age: 9_000)) == [100_000]
+    end
+
+    test "carbonite_prefix option works as expected" do
+      assert ids(outbox_done(carbonite_prefix: "alternate_test_schema")) == []
+
+      update_alternate_outbox(%{last_transaction_id: 1_000})
+
+      assert ids(outbox_done(carbonite_prefix: "alternate_test_schema")) == [666]
     end
   end
 

@@ -167,8 +167,15 @@ defmodule Carbonite.Query do
     # NOTE: The query below has a non-optimal query plan, but expressing it differently makes
     #       it a bit convoluted (e.g., fetching the min `last_transaction_id` or `MAX_INT` if that
     #       does not exist and then filtering by <= that number), so we keep the `ALL()` for now.
-    from_with_prefix(Transaction, opts)
-    |> where([t], t.id <= all(from(o in Outbox, select: o.last_transaction_id)))
+
+    outbox_query =
+      Outbox
+      |> from_with_prefix(opts)
+      |> select([o], o.last_transaction_id)
+
+    Transaction
+    |> from_with_prefix(opts)
+    |> where([t], t.id <= all(outbox_query))
     |> maybe_apply(opts, :min_age, 300, &where_inserted_at_lt/2)
   end
 

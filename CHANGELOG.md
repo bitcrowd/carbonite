@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixed
+
+* Fix `carbonite_prefix` on `Query.outbox_done/2`. Apply the prefix on the nested outbox query as well.
+
 ## [0.7.0] - 2023-02-15
 
 ### Fixed
