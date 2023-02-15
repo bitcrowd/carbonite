@@ -106,7 +106,7 @@ defmodule CarboniteTest do
   end
 
   describe "process/4" do
-    setup [:insert_past_transactions]
+    setup [:insert_past_transactions, :insert_transaction_in_alternate_schema]
 
     test "starts at the last processed position (+1)" do
       update_rabbits_outbox(%{last_transaction_id: 200_000})
@@ -215,16 +215,19 @@ defmodule CarboniteTest do
     end
 
     test "carbonite_prefix option works as expected" do
-      assert_raise Ecto.NoResultsError, ~r/alternate_test_schema/, fn ->
-        process(TestRepo, "rabbits", [carbonite_prefix: "alternate_test_schema"], fn _, _ ->
-          :halt
+      {:ok, outbox} =
+        process(TestRepo, "alternate_outbox", [carbonite_prefix: "alternate_test_schema"], fn txs,
+                                                                                              _ ->
+          assert ids(txs) == [666]
+          :cont
         end)
-      end
+
+      assert outbox.last_transaction_id == 666
     end
   end
 
   describe "purge/2" do
-    setup [:insert_past_transactions]
+    setup [:insert_past_transactions, :insert_transaction_in_alternate_schema]
 
     setup do
       update_rabbits_outbox(%{last_transaction_id: 200_000})
@@ -245,7 +248,16 @@ defmodule CarboniteTest do
     end
 
     test "carbonite_prefix option works as expected" do
+      assert [%Transaction{id: 666}] = get_transactions(carbonite_prefix: "alternate_test_schema")
       assert purge(TestRepo, carbonite_prefix: "alternate_test_schema") == {:ok, 0}
+
+      update_alternate_outbox(%{last_transaction_id: 1_000})
+
+      assert purge(TestRepo, carbonite_prefix: "alternate_test_schema") == {:ok, 1}
+      assert [] = get_transactions(carbonite_prefix: "alternate_test_schema")
+
+      # Transactions/outboxes on other schema are not affected.
+      assert purge(TestRepo) == {:ok, 2}
     end
   end
 

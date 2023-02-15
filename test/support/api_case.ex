@@ -42,6 +42,15 @@ defmodule Carbonite.APICase do
     %{transactions: transactions}
   end
 
+  def insert_transaction_in_alternate_schema(_) do
+    transaction_on_alternate_schema =
+      TestRepo.insert!(%Transaction{id: 666, inserted_at: hours_ago(1)},
+        prefix: "alternate_test_schema"
+      )
+
+    %{transaction_on_alternate_schema: transaction_on_alternate_schema}
+  end
+
   defp hours_ago(n) do
     DateTime.utc_now() |> DateTime.add(n * -3600)
   end
@@ -58,8 +67,17 @@ defmodule Carbonite.APICase do
     |> TestRepo.update!()
   end
 
-  def get_transactions do
-    Query.transactions()
+  def update_alternate_outbox(attrs) do
+    "alternate_outbox"
+    |> Query.outbox(carbonite_prefix: "alternate_test_schema")
+    |> TestRepo.one!()
+    |> change(attrs)
+    |> TestRepo.update!()
+  end
+
+  def get_transactions(opts \\ []) do
+    opts
+    |> Query.transactions()
     |> order_by({:asc, :id})
     |> TestRepo.all()
   end

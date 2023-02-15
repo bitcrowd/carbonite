@@ -15,6 +15,10 @@ defmodule Carbonite.TestRepo.Migrations.InstallCarboniteAlternateTestSchema do
     Carbonite.Migrations.put_trigger_config(:rabbits, :mode, :ignore,
       carbonite_prefix: "alternate_test_schema"
     )
+
+    Carbonite.Migrations.create_outbox("alternate_outbox",
+      carbonite_prefix: "alternate_test_schema"
+    )
   end
 
   def down do
