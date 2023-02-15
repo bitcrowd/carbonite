@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Fixed
+
+* `Carbonite.override_mode/2` and most functions in `Carbonite.Query` were broken when using a non-default `carbonite_prefix` option. Fixed by moving the `prefix` option onto the `from` expression.
+
 ### Added
 
 * Added `:initially` option to `create_trigger/2` to create triggers with `IMMEDIATE DEFERRED` constraint option. This allows to conditionally insert the `Carbonite.Transaction` record at the end of the transaction. In order to use this for already existing triggers, you need to drop them (`drop_trigger/2`) and re-create them.
@@ -7,6 +11,7 @@
 ### Changed
 
 * Made the changes trigger `DEFERRABLE`. As part of the `:initially` option of `create_trigger/2`, we chose to make triggers `DEFERRABLE` by default. Again, for any existing triggers, this won't take effect, but newly created triggers will use this constraint option.
+* Dropped support for `preload: atom | [atom]`-style of specifying preloads on a query in `Carbonite.Query`.
 
 ## [0.6.0] - 2022-10-12
 

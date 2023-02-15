@@ -67,6 +67,20 @@ defmodule CarboniteTest do
         assert {:ok, [%Carbonite.Change{op: :insert}]} = fetch_changes(TestRepo)
       end)
     end
+
+    test "carbonite_prefix option works as expected" do
+      TestRepo.transaction(fn ->
+        # Disable on primary test schema, enable on alternate test schema.
+        override_mode(TestRepo)
+        override_mode(TestRepo, carbonite_prefix: "alternate_test_schema")
+
+        insert_transaction(TestRepo, %{}, carbonite_prefix: "alternate_test_schema")
+        insert_jack()
+
+        assert {:ok, [%Carbonite.Change{op: :insert}]} =
+                 fetch_changes(TestRepo, carbonite_prefix: "alternate_test_schema")
+      end)
+    end
   end
 
   describe "override_mode/2" do
@@ -76,6 +90,18 @@ defmodule CarboniteTest do
       insert_jack()
 
       assert get_transactions() == []
+    end
+
+    test "carbonite_prefix option works as expected" do
+      insert_transaction(TestRepo)
+      insert_jack()
+
+      # Mode is :ignore in the alternate_test_schema, so override mode enables the trigger.
+      assert override_mode(TestRepo, carbonite_prefix: "alternate_test_schema") == :ok
+
+      assert_raise Postgrex.Error, ~r/without prior INSERT into alternate_test_schema/, fn ->
+        insert_jack()
+      end
     end
   end
 
@@ -187,6 +213,14 @@ defmodule CarboniteTest do
                  :cont
                end)
     end
+
+    test "carbonite_prefix option works as expected" do
+      assert_raise Ecto.NoResultsError, ~r/alternate_test_schema/, fn ->
+        process(TestRepo, "rabbits", [carbonite_prefix: "alternate_test_schema"], fn _, _ ->
+          :halt
+        end)
+      end
+    end
   end
 
   describe "purge/2" do
@@ -199,15 +233,19 @@ defmodule CarboniteTest do
     end
 
     test "deletes transactions that have been processed by all outboxes" do
-      assert {:ok, 2} = purge(TestRepo)
+      assert purge(TestRepo) == {:ok, 2}
 
       assert [%Transaction{id: 300_000}] = get_transactions()
     end
 
     test "passes down batch query options" do
-      assert {:ok, 1} = purge(TestRepo, min_age: 9_000)
+      assert purge(TestRepo, min_age: 9_000) == {:ok, 1}
 
       assert [%Transaction{id: 200_000}, %Transaction{id: 300_000}] = get_transactions()
+    end
+
+    test "carbonite_prefix option works as expected" do
+      assert purge(TestRepo, carbonite_prefix: "alternate_test_schema") == {:ok, 0}
     end
   end
 

@@ -2,16 +2,8 @@
 
 defmodule Carbonite.TransactionTest do
   use Carbonite.APICase, async: true
-  alias Carbonite.{TestRepo, Transaction}
-  alias Ecto.Adapters.SQL
-  import Transaction
-
-  describe "Schema" do
-    test "uses the default carbonite_prefix" do
-      {sql, _} = SQL.to_sql(:all, TestRepo, Transaction)
-      assert String.contains?(sql, ~s("carbonite_default"."transactions"))
-    end
-  end
+  import Carbonite.Transaction
+  alias Carbonite.{Change, Transaction}
 
   describe "changeset/1" do
     test "transaction_changesets an Ecto.Changeset for a transaction" do
@@ -27,8 +19,8 @@ defmodule Carbonite.TransactionTest do
     end
 
     test "merges metadata from process dictionary" do
-      Carbonite.Transaction.put_meta(:foo, 1)
-      Carbonite.Transaction.put_meta(:bar, 1)
+      Transaction.put_meta(:foo, 1)
+      Transaction.put_meta(:bar, 1)
       %Ecto.Changeset{} = changeset = changeset(%{meta: %{foo: 2}})
 
       assert get_field(changeset, :meta) == %{foo: 2, bar: 1}
@@ -38,12 +30,12 @@ defmodule Carbonite.TransactionTest do
   describe "Jason.Encoder implementation" do
     test "Transaction can be encoded to JSON" do
       json =
-        %Carbonite.Transaction{
+        %Transaction{
           id: 1,
           meta: %{"foo" => 1},
           inserted_at: ~U[2021-11-01T12:00:00Z],
           changes: [
-            %Carbonite.Change{
+            %Change{
               id: 1,
               op: :update,
               table_prefix: "default",

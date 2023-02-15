@@ -14,7 +14,8 @@ defmodule Carbonite do
   @moduledoc since: "0.1.0"
 
   import Ecto.Query
-  alias Carbonite.{Outbox, Query, Schema, Transaction, Trigger}
+  alias Carbonite.{Outbox, Prefix, Query, Schema, Transaction}
+  require Prefix
   require Schema
 
   @type prefix :: binary()
@@ -25,7 +26,7 @@ defmodule Carbonite do
   @doc "Returns the default audit trail prefix."
   @doc since: "0.1.0"
   @spec default_prefix() :: prefix()
-  def default_prefix, do: Schema.default_prefix()
+  def default_prefix, do: Prefix.default_prefix()
 
   @doc """
   Inserts a `t:Carbonite.Transaction.t/0` into the database.
@@ -125,12 +126,10 @@ defmodule Carbonite do
   @spec override_mode(repo()) :: :ok
   @spec override_mode(repo(), [prefix_option()]) :: :ok
   def override_mode(repo, opts \\ []) do
-    carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
-
-    from(t in Trigger,
-      update: [set: [override_xact_id: fragment("pg_current_xact_id()")]]
-    )
-    |> repo.update_all([], prefix: carbonite_prefix)
+    opts
+    |> Query.triggers()
+    |> update([], set: [override_xact_id: fragment("pg_current_xact_id()")])
+    |> repo.update_all([])
 
     :ok
   end

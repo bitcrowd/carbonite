@@ -25,16 +25,15 @@ defmodule Carbonite.QueryTest do
     end
 
     test "can preload changes alongside the transaction" do
-      assert [%Transaction{changes: []} | _] = TestRepo.all(Query.transactions(preload: :changes))
-
-      assert [%Transaction{changes: []} | _] =
-               TestRepo.all(Query.transactions(preload: [:changes]))
-
       assert [%Transaction{changes: []} | _] = TestRepo.all(Query.transactions(preload: true))
     end
 
+    test "carbonite_prefix option works as expected" do
+      assert TestRepo.all(Query.transactions(carbonite_prefix: "alternate_test_schema")) == []
+    end
+
     test "accepts an atom as prefix" do
-      assert length(TestRepo.all(Query.transactions(carbonite_prefix: :carbonite_default))) == 4
+      assert TestRepo.all(Query.transactions(carbonite_prefix: :alternate_test_schema)) == []
     end
   end
 
@@ -50,12 +49,6 @@ defmodule Carbonite.QueryTest do
     end
 
     test "can preload changes alongside the transaction" do
-      assert %Transaction{changes: [%Change{}, %Change{}]} =
-               TestRepo.one!(Query.current_transaction(preload: :changes))
-
-      assert %Transaction{changes: [%Change{}, %Change{}]} =
-               TestRepo.one!(Query.current_transaction(preload: [:changes]))
-
       assert %Transaction{changes: [%Change{}, %Change{}]} =
                TestRepo.one!(Query.current_transaction(preload: true))
     end
@@ -182,8 +175,6 @@ defmodule Carbonite.QueryTest do
     end
 
     test "can preload the transaction", %{rabbit: rabbit} do
-      assert [%Change{transaction: %Transaction{}}] = changes(rabbit, preload: :transaction)
-      assert [%Change{transaction: %Transaction{}}] = changes(rabbit, preload: [:transaction])
       assert [%Change{transaction: %Transaction{}}] = changes(rabbit, preload: true)
     end
 

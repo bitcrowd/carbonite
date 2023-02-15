@@ -8,14 +8,14 @@ defmodule Carbonite.Query do
   @moduledoc since: "0.2.0"
 
   import Ecto.Query
-  import Carbonite, only: [default_prefix: 0]
-  alias Carbonite.{Change, Outbox, Transaction}
+  import Carbonite.Prefix
+  alias Carbonite.{Change, Outbox, Transaction, Trigger}
 
   @type prefix :: binary()
   @type disabled :: nil | false
 
   @type prefix_option :: {:carbonite_prefix, prefix()}
-  @type preload_option :: {:preload, atom() | [atom()] | true | disabled()}
+  @type preload_option :: {:preload, boolean()}
 
   @type transactions_option :: prefix_option() | preload_option()
 
@@ -28,25 +28,21 @@ defmodule Carbonite.Query do
       |> MyApp.Repo.all()
 
       # Preload changes
-      Carbonite.Query.transactions(preload: :changes)
-      |> MyApp.Repo.all()
-
-      # Same
       Carbonite.Query.transactions(preload: true)
       |> MyApp.Repo.all()
 
   ## Options
 
   * `carbonite_prefix` - defines the audit trail's schema, defaults to `"carbonite_default"`
-  * `preload` - can be used to preload the changes, defaults to `nil`
+  * `preload` - can be used to preload the changes, defaults to `false`
   """
+
   @doc since: "0.3.1"
   @spec transactions() :: Ecto.Query.t()
   @spec transactions([transactions_option()]) :: Ecto.Query.t()
   def transactions(opts \\ []) do
-    from(t in Transaction)
-    |> maybe_preload(opts, :changes)
-    |> put_carbonite_prefix(opts)
+    from_with_prefix(Transaction, opts)
+    |> maybe_preload(opts, :changes, from_with_prefix(Change, opts))
   end
 
   @type current_transaction_option :: prefix_option() | preload_option()
@@ -78,7 +74,7 @@ defmodule Carbonite.Query do
   ## Options
 
   * `carbonite_prefix` - defines the audit trail's schema, defaults to `"carbonite_default"`
-  * `preload` - can be used to preload the changes, defaults to `nil`
+  * `preload` - can be used to preload the changes, defaults to `false`
   """
   @doc since: "0.2.0"
   @spec current_transaction() :: Ecto.Query.t()
@@ -86,14 +82,20 @@ defmodule Carbonite.Query do
   def current_transaction(opts \\ []) do
     carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
-    from(t in Transaction)
+    from_with_prefix(Transaction, opts)
     |> where(
       [t],
       t.id == fragment("CURRVAL(CONCAT(?::VARCHAR, '.transactions_id_seq'))", ^carbonite_prefix)
     )
     |> where([t], t.xact_id == fragment("pg_current_xact_id()"))
-    |> maybe_preload(opts, :changes)
-    |> put_carbonite_prefix(opts)
+    |> maybe_preload(opts, :changes, from_with_prefix(Change, opts))
+  end
+
+  # Returns all triggers.
+  @doc false
+  @spec triggers() :: Ecto.Query.t()
+  def triggers(opts \\ []) do
+    from_with_prefix(Trigger, opts)
   end
 
   @doc """
@@ -107,9 +109,8 @@ defmodule Carbonite.Query do
   @spec outbox(Outbox.name()) :: Ecto.Query.t()
   @spec outbox(Outbox.name(), [prefix_option()]) :: Ecto.Query.t()
   def outbox(outbox_name, opts \\ []) do
-    from(o in Outbox)
+    from_with_prefix(Outbox, opts)
     |> where([o], o.name == ^outbox_name)
-    |> put_carbonite_prefix(opts)
   end
 
   @type outbox_queue_option ::
@@ -134,17 +135,14 @@ defmodule Carbonite.Query do
   @spec outbox_queue(Outbox.t()) :: Ecto.Query.t()
   @spec outbox_queue(Outbox.t(), [outbox_queue_option()]) :: Ecto.Query.t()
   def outbox_queue(%Outbox{last_transaction_id: last_processed_tx_id}, opts \\ []) do
-    opts =
-      opts
-      |> Keyword.put_new(:preload, true)
+    opts = Keyword.put_new(opts, :preload, true)
 
-    from(t in Transaction)
+    from_with_prefix(Transaction, opts)
     |> where([t], t.id > ^last_processed_tx_id)
     |> maybe_apply(opts, :limit, 100, fn q, bs -> limit(q, ^bs) end)
     |> maybe_apply(opts, :min_age, 300, &where_inserted_at_lt/2)
-    |> maybe_preload(opts, :changes)
+    |> maybe_preload(opts, :changes, from_with_prefix(Change, opts))
     |> order_by({:asc, :id})
-    |> put_carbonite_prefix(opts)
   end
 
   @type outbox_done_option :: prefix_option() | {:min_age, non_neg_integer() | disabled()}
@@ -161,7 +159,6 @@ defmodule Carbonite.Query do
 
   * `min_age` - the minimum age of a record, defaults to 300 seconds (set nil to disable)
   * `carbonite_prefix` - defines the audit trail's schema, defaults to `"carbonite_default"`
-  * `preload` - can be used to preload the changes, defaults to `true`
   """
   @doc since: "0.4.0"
   @spec outbox_done() :: Ecto.Query.t()
@@ -170,10 +167,9 @@ defmodule Carbonite.Query do
     # NOTE: The query below has a non-optimal query plan, but expressing it differently makes
     #       it a bit convoluted (e.g., fetching the min `last_transaction_id` or `MAX_INT` if that
     #       does not exist and then filtering by <= that number), so we keep the `ALL()` for now.
-    from(t in Transaction)
+    from_with_prefix(Transaction, opts)
     |> where([t], t.id <= all(from(o in Outbox, select: o.last_transaction_id)))
     |> maybe_apply(opts, :min_age, 300, &where_inserted_at_lt/2)
-    |> put_carbonite_prefix(opts)
   end
 
   @default_table_prefix "public"
@@ -215,13 +211,12 @@ defmodule Carbonite.Query do
         record |> Map.fetch!(pk_col) |> to_string()
       end
 
-    from(c in Change)
+    from_with_prefix(Change, opts)
     |> where([c], c.table_prefix == ^table_prefix)
     |> where([c], c.table_name == ^table_name)
     |> where([c], c.table_pk == ^table_pk)
-    |> maybe_preload(opts, :transaction)
+    |> maybe_preload(opts, :transaction, from_with_prefix(Transaction, opts))
     |> order_by({:asc, :id})
-    |> put_carbonite_prefix(opts)
   end
 
   defp maybe_apply(queryable, opts, key, default, fun) do
@@ -232,16 +227,13 @@ defmodule Carbonite.Query do
     end
   end
 
-  defp maybe_preload(queryable, opts, default) do
+  defp maybe_preload(queryable, opts, association, preload_query) do
     case Keyword.get(opts, :preload, false) do
-      preload when preload in [false, nil, []] ->
+      preload when preload in [false, nil] ->
         queryable
 
       true ->
-        preload(queryable, ^default)
-
-      preload when is_atom(preload) or is_list(preload) ->
-        preload(queryable, ^preload)
+        preload(queryable, [{^association, ^preload_query}])
     end
   end
 
@@ -249,11 +241,5 @@ defmodule Carbonite.Query do
     max_inserted_at = DateTime.add(DateTime.utc_now(), -1 * min_age, :second)
 
     where(queryable, [t], t.inserted_at <= ^max_inserted_at)
-  end
-
-  defp put_carbonite_prefix(queryable, opts) do
-    carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
-
-    put_query_prefix(queryable, to_string(carbonite_prefix))
   end
 end
