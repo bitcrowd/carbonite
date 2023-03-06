@@ -174,7 +174,7 @@ defmodule Carbonite do
   matching the given filter criteria (`min_age`, etc.) until either the input source is exhausted
   or a processing function application returns `:halt`.
 
-  Returns the `{:ok, outbox}` or `{:halt, outbox}` depending on whether processing was halted
+  Returns either `{:ok, outbox}` or `{:halt, outbox}` depending on whether processing was halted
   explicitly or due the exhausted input source.
 
   See `Carbonite.Query.outbox_queue/2` for query options.
@@ -225,7 +225,8 @@ defmodule Carbonite do
   ### Error handling
 
   In case you run into an error midway into processing a batch, you may choose to halt processing
-  while remembering about the last processed transaction.
+  while remembering about the last processed transaction. This is equivalent to raising an
+  exception from the processing function.
 
       Carbonite.process(MyApp.Repo, "rabbit_holes", fn [transaction], _memo ->
         case send_to_external_database(transaction) do
