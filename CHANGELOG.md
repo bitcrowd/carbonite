@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixed
+
+* Fix `Carbonite.process/4` success typing by explicitly picking options.
+
 ## [0.7.1] - 2023-02-15
 
 ### Fixed
