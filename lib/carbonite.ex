@@ -283,6 +283,8 @@ defmodule Carbonite do
   end
 
   defp load_outbox(repo, outbox_name, opts) do
+    opts = Keyword.take(opts, [:carbonite_prefix])
+
     outbox_name
     |> Carbonite.Query.outbox(opts)
     |> repo.one!()
