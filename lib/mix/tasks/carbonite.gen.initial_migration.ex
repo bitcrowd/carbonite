@@ -54,7 +54,7 @@ defmodule Mix.Tasks.Carbonite.Gen.InitialMigration do
       # Install a trigger for a table:
       #
       #    Carbonite.Migrations.create_trigger("rabbits")
-      #    Carbonite.Migrations.create_trigger("rabbits", prefix: "animals")
+      #    Carbonite.Migrations.create_trigger("rabbits", table_prefix: "animals")
       #    Carbonite.Migrations.create_trigger("rabbits", carbonite_prefix: "carbonite_other")
 
       # Configure trigger options:
@@ -75,7 +75,7 @@ defmodule Mix.Tasks.Carbonite.Gen.InitialMigration do
       # Remove trigger from a table:
       #
       #    Carbonite.Migrations.drop_trigger("rabbits")
-      #    Carbonite.Migrations.drop_trigger("rabbits", prefix: "animals")
+      #    Carbonite.Migrations.drop_trigger("rabbits", table_prefix: "animals")
       #    Carbonite.Migrations.drop_trigger("rabbits", carbonite_prefix: "carbonite_other")
 
       # Make sure to apply the same carbonite_prefix option here.
