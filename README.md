@@ -450,14 +450,54 @@ Carbonite.purge(MyApp.Repo)
 
 ## Testing / Bypassing Carbonite
 
-One of Carbonite's key features is that it is virtually impossible to forget to record a change to a table (due to the trigger) or to forget to insert an enclosing `Carbonite.Transaction` beforehand (due to the foreign key constraint between `changes` and `transactions`). However, in some circumstances it may be desirable to temporarily switch off change capturing. One such situation is the use of factories (e.g. ExMachina) inside your test suite: Inserting a transaction before each factory call quickly becomes cumbersome and will unnecessarily increase execution time.
+One of Carbonite's key features is that it is virtually impossible to forget to record a change to a table (due to the trigger) or to forget to insert an enclosing `Carbonite.Transaction` beforehand (due to the foreign key constraint between `changes` and `transactions`). However, in some circumstances it may be desirable to temporarily switch off change capturing. One such situation is the use of factories (e.g. ExMachina) inside your test suite: Inserting a transaction before each factory call quickly becomes cumbersome and will unnecessarily increase execution time. Additionally, the use of Ecto's SQL sandbox means that your factory calls are contained in the same transaction as your domain logic, which means you cannot simply insert a `Carbonite.Transaction` before your factories if you intend to assert on the one inserted by your domain logic.
 
-To bypass the capture trigger, Carbonite's trigger configuration provides a toggle mechanism consisting of two fields: `mode` and `override_xact_id`. The former you set while installing the trigger on a table in a migration, while the latter allows to "override" whatever has been set at runtime, and only for the current transaction. If you are using Ecto's SQL sandbox for running transactional tests, this means the override is going to be active until the end of the test case.
+To bypass the capture trigger, Carbonite's trigger configuration provides a toggle mechanism consisting of two fields: `mode` and `override_xact_id`. The former you set while installing the trigger on a table in a migration, while the latter allows to "override" whatever has been set, at runtime and only for the current transaction. If you are using Ecto's SQL sandbox for running transactional tests, this means the override is going to be active until the end of the test case.
 
 As a result, you have two options:
 
-1. Leave the `mode` at the default value of `:capture` and *turn off* capturing as needed by switching to "override mode". This means for every test case where you do not care about change capturing, you explicitly disable the trigger before any database calls; for instance, in an ExUnit setup block. This approach has the benefit that you still capture all changes by default, and can't miss to test a code path that (in production) would require a `Carbonite.Transaction`. It is, however, still pretty expensive at ~1 additional SQL call per test case.
+1. Leave the `mode` at the default value of `:capture` and *turn off* capturing as needed by switching to "override mode". This means for every test case / test setup block where you wish to bypass change capturing, you explicitly disable the trigger before any database calls. This approach has the benefit that you still capture all changes by default, and can't miss to test a code path that (in production) would require a `Carbonite.Transaction`. It is, however, pretty expensive at ~1 additional SQL call per test case.
 2. Set the `mode` to `:ignore` on all triggers in your `:test` environment and instead selectively *turn on* capturing in test cases where you want to assert on the captured data. For instance, you can set the trigger mode in your migration based on the Mix environment. This approach is cheaper as it does not require any action in your tests by default. Yet you should make sure that you test all code paths that do mutate change-captured tables, in order to assert that each of these inserts a transaction as well.
+
+### Option 1: Bypassing change capture selectively
+
+As an example for option 1, consider the following:
+
+```elixir
+# test/support/carbonite_helpers.ex
+defmodule MyApp.CarboniteHelpers do
+  def with_ignored_carbonite(fun) do
+    Carbonite.override_mode(MyApp.Repo, to: :ignore)
+    result = fun.()
+    Carbonite.override_mode(MyApp.Repo, to: :capture)
+    result
+  end
+end
+
+# test/some_test.exs
+test "my_operation/0" do
+  rabbit = with_ignored_carbonite(fn -> insert_rabbit() end)
+
+  my_operation(rabbit)
+
+  # You can assert on the Carbonite.Transaction, e.g. like this:
+  meta =
+    Carbonite.Query.current_transaction()
+    |> MyApp.Repo.one!()
+    |> Map.fetch!(:meta)
+
+  assert meta = %{"type" => "some_operation"}
+end
+
+test "my_other_operation/0" do
+  rabbit = insert_rabbit()
+
+  # this will raise if you forgot to insert a transaction in my_other_operation/0
+  my_operation()
+end
+```
+
+### Option 2: Bypassing change capture by default
 
 The following code snippet illustrates the second approach:
 
@@ -481,28 +521,27 @@ end
 
 # test/support/carbonite_helpers.ex
 defmodule MyApp.CarboniteHelpers do
-  def carbonite_override_mode(_) do
-    Carbonite.override_mode(MyApp.Repo)
-
-    :ok
-  end
-
-  def current_transaction_meta do
-    Carbonite.Query.current_transaction()
-    |> MyApp.Repo.one!()
-    |> Map.fetch(:meta)
+  def enable_carbonite do
+    Carbonite.override_mode(MyApp.Repo, to: :capture)
   end
 end
 
 # test/some_test.exs
-describe "my_operation/0" do
-  setup [:carbonite_override_mode]
+test "my_operation/0" do
+  rabbit = insert_rabbit()
 
-  test "auditing" do
-    my_operation()
+  enable_carbonite()
 
-    assert current_transaction_meta() == {:ok, %{"type" => "some_operation"}}
-  end
+  my_operation()
+
+  # Assert on the Carbonite.Transaction...
+end
+
+test "my_other_operation/0" do
+  rabbit = insert_rabbit()
+
+  # this will pass regardless of whether you inserted a transaction in my_other_operation/0 (!)
+  my_operation()
 end
 ```
 
