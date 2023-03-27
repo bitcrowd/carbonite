@@ -103,6 +103,18 @@ defmodule CarboniteTest do
         insert_jack()
       end
     end
+
+    test "can toggle override mode with the :to option" do
+      assert override_mode(TestRepo, to: :ignore) == :ok
+
+      insert_jack()
+
+      assert override_mode(TestRepo, to: :capture) == :ok
+
+      assert_raise Postgrex.Error, fn ->
+        insert_jack()
+      end
+    end
   end
 
   describe "process/4" do

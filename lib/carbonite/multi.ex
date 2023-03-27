@@ -7,6 +7,7 @@ defmodule Carbonite.Multi do
 
   @moduledoc since: "0.2.0"
 
+  alias Carbonite.Trigger
   alias Ecto.Multi
 
   @type prefix :: binary()
@@ -69,7 +70,7 @@ defmodule Carbonite.Multi do
   """
   @doc since: "0.2.0"
   @spec override_mode(Multi.t()) :: Multi.t()
-  @spec override_mode(Multi.t(), [prefix_option()]) :: Multi.t()
+  @spec override_mode(Multi.t(), [{:to, Trigger.mode()} | prefix_option()]) :: Multi.t()
   def override_mode(%Multi{} = multi, opts \\ []) do
     Multi.run(multi, :carbonite_triggers, fn repo, _state ->
       {:ok, Carbonite.override_mode(repo, opts)}

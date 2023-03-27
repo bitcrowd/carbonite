@@ -1,3 +1,9 @@
+## Unreleased
+
+### Added
+
+* Add `:to` option to `Carbonite.override_mode/2` to specify an explicit target mode. Useful for toggling the mode around test fixtures.
+
 ## [0.7.2] - 2023-03-07
 
 ### Fixed
