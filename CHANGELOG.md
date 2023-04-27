@@ -1,3 +1,15 @@
+## Unreleased
+
+**New migration patches:** 6
+
+### Fixed
+
+* Correctly detect changes to array fields.
+
+Previously, detection of changes was done via the `@>` operator to test "containment" of a `{col: old_value}` JSON object in the JSON object of the new record. Unfortunately, Postgres' "jsonb containment" (see [docs](https://www.postgresql.org/docs/15/datatype-json.html#JSON-CONTAINMENT)) views array subsets as contained within their subsets, as well as arrays in different orders to be contained within each other. Both of these cases we want to track as a changed value.
+
+⚠️ This bug caused Carbonite to not identify a changed array field correctly, meaning it may not have been listed in the `changed` and `changed_from` columns of the `Carbonite.Change` record. Unfortunately, this also means that **versions may have been discarded entirely** if no other fields of a record were updated at the same time.
+
 ## [0.8.0] - 2023-03-27
 
 ### Added

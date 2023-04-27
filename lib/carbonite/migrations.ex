@@ -18,7 +18,7 @@ defmodule Carbonite.Migrations do
   # --------------------------------- patch levels ---------------------------------
 
   @initial_patch 1
-  @current_patch 5
+  @current_patch 6
 
   @doc false
   @spec initial_patch :: non_neg_integer()

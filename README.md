@@ -125,6 +125,7 @@ defmodule MyApp.Repo.Migrations.InstallCarbonite do
     Carbonite.Migrations.up(3)
     Carbonite.Migrations.up(4)
     Carbonite.Migrations.up(5)
+    Carbonite.Migrations.up(6)
 
     # For each table that you want to capture changes of, you need to install the trigger.
     Carbonite.Migrations.create_trigger(:rabbits)
@@ -144,6 +145,7 @@ defmodule MyApp.Repo.Migrations.InstallCarbonite do
     Carbonite.Migrations.drop_trigger(:rabbits)
 
     # Drop the Carbonite tables.
+    Carbonite.Migrations.down(6)
     Carbonite.Migrations.down(5)
     Carbonite.Migrations.down(4)
     Carbonite.Migrations.down(3)

@@ -7,6 +7,7 @@ defmodule Carbonite.TestRepo.Migrations.CreateDeferredRabbits do
     create table(:deferred_rabbits) do
       add(:name, :string)
       add(:age, :integer)
+      add(:carrots, {:array, :string}, default: "{}")
     end
 
     Carbonite.Migrations.create_trigger(:deferred_rabbits, initially: :deferred)
