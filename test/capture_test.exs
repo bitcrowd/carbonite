@@ -118,6 +118,21 @@ defmodule CaptureTest do
       assert [%{"op" => "insert"}] = select_changes()
     end
 
+    test "changes to arrays are detected correctly" do
+      TestRepo.transaction(fn ->
+        insert_transaction()
+        insert_jack()
+
+        # Additive array changes weren't detected correctly previously.
+        query!("UPDATE rabbits SET carrots = '{carrot1}';")
+      end)
+
+      assert [
+               _insert,
+               %{"op" => "update", "changed_from" => %{"carrots" => []}, "changed" => ["carrots"]}
+             ] = select_changes()
+    end
+
     test "changed_from tracking is optional" do
       query!("UPDATE carbonite_default.triggers SET store_changed_from = FALSE;")
 
