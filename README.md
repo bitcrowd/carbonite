@@ -93,7 +93,7 @@ Due to its use of [`pg_current_xact_id`](https://www.postgresql.org/docs/13/func
 # mix.exs
 def deps do
   [
-    {:carbonite, "~> 0.8.0"}
+    {:carbonite, "~> 0.9.0"}
   ]
 end
 ```
@@ -561,6 +561,6 @@ The amazing Carbonite logo has been designed by [Petra Herberger](https://www.pe
 
 ## Copyright and License
 
-Copyright © 2021–2022, Bitcrowd GmbH.
+Copyright © 2021–2023, Bitcrowd GmbH.
 
 You may use and redistribute Carbonite and its source code under the Apache 2.0 License, see the [LICENSE](LICENSE) file for details.
