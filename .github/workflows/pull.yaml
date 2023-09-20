@@ -1,0 +1,103 @@
+name: QA
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions: read-all
+
+env:
+  MIX_ENV: test
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: test
+    strategy:
+      matrix:
+        # Earliest combination possible:
+        # - ubuntu-latest (Ubuntu 22) mandates OTP >= 24
+        # - dialyxir uses `Kernel.then` and hence mandates Elixir >= 1.12
+        lang: [{otp: '24.3.4.13', elixir: '1.12.3'}, {otp: '26.0.2', elixir: '1.15.5'}]
+        postgres: ['13.12', '16.0']
+    services:
+      postgres:
+        image: postgres:${{matrix.postgres}}
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: carbonite_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v2
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{matrix.lang.otp}}
+          elixir-version: ${{matrix.lang.elixir}}
+      - uses: actions/cache@v3
+        with:
+          path: deps
+          key: ${{ runner.os }}-deps-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-deps-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}
+            ${{ runner.os }}-deps-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}
+            ${{ runner.os }}-deps
+      - uses: actions/cache@v3
+        with:
+          path: _build
+          key: ${{ runner.os }}-build-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}
+            ${{ runner.os }}-build-${{ matrix.lang.otp }}-${{ matrix.lang.elixir}}
+            ${{ runner.os }}-build
+      - run: mix deps.get
+      - run: mix do ecto.create, ecto.migrate
+      - run: mix compile
+      - run: mix test
+
+  lint:
+    runs-on: ubuntu-latest
+    name: lint
+    env:
+      otp_version: 26.0.2
+      elixir_version: 1.15.5
+    steps:
+      - uses: actions/checkout@v2
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ env.otp_version }}
+          elixir-version: ${{ env.elixir_version }}
+      - uses: actions/cache@v3
+        with:
+          path: deps
+          key: ${{ runner.os }}-deps-${{ env.otp_version }}-${{ env.elixir_version }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-deps-${{ env.otp_version }}-${{ env.elixir_version }}-${{ env.MIX_ENV }}
+            ${{ runner.os }}-deps-${{ env.otp_version }}-${{ env.elixir_version }}
+            ${{ runner.os }}-deps
+      - uses: actions/cache@v3
+        with:
+          path: _build
+          key: ${{ runner.os }}-build-${{ env.otp_version }}-${{ env.elixir_version }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.otp_version }}-${{ env.elixir_version }}-${{ env.MIX_ENV }}
+            ${{ runner.os }}-build-${{ env.otp_version }}-${{ env.elixir_version }}
+            ${{ runner.os }}-build
+      - uses: actions/cache@v3
+        with:
+          path: _plts
+          key: ${{ runner.os }}-plts-${{ env.otp_version }}-${{ env.elixir_version }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-plts-${{ env.otp_version }}-${{ env.elixir_version }}-${{ env.MIX_ENV }}
+            ${{ runner.os }}-plts-${{ env.otp_version }}-${{ env.elixir_version }}
+            ${{ runner.os }}-plts
+      - run: mix deps.get
+      - run: mix compile --warnings-as-errors
+      - run: mix lint

@@ -63,10 +63,9 @@ defmodule Carbonite.MixProject do
       {:ecto_sql, "~> 3.6"},
       {:jason, "~> 1.2"},
       {:postgrex, "~> 0.15 and >= 0.15.11"},
-      {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.1", only: [:dev, :test], runtime: false},
-      {:ex_doc, "> 0.0.0", only: [:dev], runtime: false},
-      {:junit_formatter, "~> 3.3", only: [:test]}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:ex_doc, "> 0.0.0", only: [:dev, :test], runtime: false}
     ]
   end
 
