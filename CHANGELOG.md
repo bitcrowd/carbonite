@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixed
+
+* Fixed a minor incompatibility with recently released Postgres 16.0.
+
 ## [0.9.0] - 2024-04-27
 
 **New migration patches:** 6
