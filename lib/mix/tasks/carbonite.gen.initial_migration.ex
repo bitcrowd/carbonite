@@ -49,8 +49,8 @@ defmodule Mix.Tasks.Carbonite.Gen.InitialMigration do
       #
       #    Carbonite.Migrations.up(1, carbonite_prefix: "carbonite_other")
 
-      <%= for i <- Carbonite.Migrations.initial_patch()..Carbonite.Migrations.current_patch() do %>Carbonite.Migrations.up(<%= i %>)
-      <% end %>
+      Carbonite.Migrations.up(<%= Carbonite.Migrations.initial_patch() %>..<%= Carbonite.Migrations.current_patch() %>)
+
       # Install a trigger for a table:
       #
       #    Carbonite.Migrations.create_trigger("rabbits")
@@ -78,9 +78,7 @@ defmodule Mix.Tasks.Carbonite.Gen.InitialMigration do
       #    Carbonite.Migrations.drop_trigger("rabbits", table_prefix: "animals")
       #    Carbonite.Migrations.drop_trigger("rabbits", carbonite_prefix: "carbonite_other")
 
-      # Make sure to apply the same carbonite_prefix option here.
-      <%= for i <- Carbonite.Migrations.current_patch()..Carbonite.Migrations.initial_patch() do %>Carbonite.Migrations.down(<%= i %>)
-      <% end %>
+      Carbonite.Migrations.down(<%= Carbonite.Migrations.current_patch() %>..<%= Carbonite.Migrations.initial_patch() %>)
     end
   end
   """)
