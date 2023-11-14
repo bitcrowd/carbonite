@@ -5,6 +5,7 @@
 ### Added
 
 - Add a new index on `transaction_id` in the `changes` table, to speed up queries for a transaction's changes and the `purge` operation. The existing `changes_transaction_id_index` (on `transaction_xact_id` column) has been renamed to `changes_transaction_xact_id_index`.
+- Allow ranges of migration patches in `Carbonite.Migrations.up/2` / `down/2`.
 
 ## [0.10.0] - 2024-09-20
 

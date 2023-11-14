@@ -47,10 +47,10 @@ defmodule Carbonite.Migrations do
   * `carbonite_prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
   """
   @doc since: "0.4.0"
-  @spec up(patch()) :: :ok
-  @spec up(patch(), [up_option()]) :: :ok
-  def up(patch, opts \\ []) when is_integer(patch) and is_list(opts) do
-    change(:up, patch, opts)
+  @spec up(patch() | Range.t()) :: :ok
+  @spec up(patch() | Range.t(), [up_option()]) :: :ok
+  def up(patch_or_range, opts \\ []) when is_list(opts) do
+    change(:up, patch_or_range, opts)
   end
 
   @type down_option :: {:carbonite_prefix, prefix()} | {:drop_schema, boolean()}
@@ -64,10 +64,16 @@ defmodule Carbonite.Migrations do
   * `drop_schema` controls whether the initial migration deletes the schema during rollback
   """
   @doc since: "0.4.0"
-  @spec down(patch()) :: :ok
-  @spec down(patch(), [down_option()]) :: :ok
-  def down(patch, opts \\ []) when is_integer(patch) and is_list(opts) do
-    change(:down, patch, opts)
+  @spec down(patch() | Range.t()) :: :ok
+  @spec down(patch() | Range.t(), [down_option()]) :: :ok
+  def down(patch_or_range, opts \\ []) when is_list(opts) do
+    change(:down, patch_or_range, opts)
+  end
+
+  defp change(direction, %Range{} = range, opts) do
+    for patch <- range do
+      change(direction, patch, opts)
+    end
   end
 
   defp change(direction, patch, opts) when is_integer(patch) do
