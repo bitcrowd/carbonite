@@ -186,7 +186,13 @@ defmodule Carbonite.Migrations do
     :ok
   end
 
-  @type trigger_config_key :: :table_prefix | :primary_key_columns | :excluded_columns | :mode
+  @type trigger_config_key ::
+          :table_prefix
+          | :primary_key_columns
+          | :excluded_columns
+          | :filtered_columns
+          | :mode
+          | :store_changed_from
 
   @doc """
   Allows to update a trigger configuration option for a given table.
