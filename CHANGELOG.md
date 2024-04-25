@@ -1,3 +1,9 @@
+## Unreleased
+
+### Fixed
+
+- Migration: Creating table `changes` failed when Ecto's `@migration_foreign_key` is set to `[column: <anything but id>]`.
+
 ## [0.11.0] - 2024-11-14
 
 **New migration patches:** 7

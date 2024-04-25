@@ -169,6 +169,7 @@ defmodule Carbonite.Migrations.V1 do
         references(:transactions,
           on_delete: :delete_all,
           on_update: :update_all,
+          column: :id,
           type: :xid8,
           prefix: prefix
         ),
