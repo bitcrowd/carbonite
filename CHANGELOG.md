@@ -1,10 +1,10 @@
-## Unreleased
+## [0.11.1] - 2024-04-25
 
 ### Fixed
 
 - Migration: Creating table `changes` failed when Ecto's `@migration_foreign_key` is set to `[column: <anything but id>]`.
 
-## [0.11.0] - 2024-11-14
+## [0.11.0] - 2023-11-14
 
 **New migration patches:** 7
 
@@ -13,13 +13,13 @@
 - Add a new index on `transaction_id` in the `changes` table, to speed up queries for a transaction's changes and the `purge` operation. The existing `changes_transaction_id_index` (on `transaction_xact_id` column) has been renamed to `changes_transaction_xact_id_index`.
 - Allow ranges of migration patches in `Carbonite.Migrations.up/2` / `down/2`.
 
-## [0.10.0] - 2024-09-20
+## [0.10.0] - 2023-09-20
 
 ### Fixed
 
 * Fixed a minor incompatibility with recently released Postgres 16.0.
 
-## [0.9.0] - 2024-04-27
+## [0.9.0] - 2023-04-27
 
 **New migration patches:** 6
 
