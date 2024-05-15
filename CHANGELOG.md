@@ -1,3 +1,13 @@
+## Unreleased
+
+**New migration patches:** 8
+
+### Fixed
+
+- Make the trigger function correctly mask the `filtered_columns` in the `changed_from` JSON object if `store_changed_from` is set. (#96)
+
+⚠️ Unfortunately, this bug caused Carbonite to persist potentially sensitive data in the `changed_from` object even though they were listed in the `filtered_columns`. All users who combine `store_changed_from: true` with a `filtered_columns` setting should upgrade and assess the impact of this potential data leak.
+
 ## [0.11.1] - 2024-04-25
 
 ### Fixed

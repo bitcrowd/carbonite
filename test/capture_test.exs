@@ -387,5 +387,22 @@ defmodule CaptureTest do
 
       assert [%{"data" => %{"name" => "[FILTERED]"}}] = select_changes()
     end
+
+    test "appear as [FILTERED] in the changed_from" do
+      TestRepo.transaction(fn ->
+        query!("""
+        UPDATE carbonite_default.triggers SET filtered_columns = '{name}';
+        """)
+
+        insert_transaction()
+        insert_jack()
+        query!("UPDATE rabbits SET name = 'Jane' WHERE name = 'Jack';")
+      end)
+
+      assert [
+               _insert,
+               %{"changed_from" => %{"name" => "[FILTERED]"}}
+             ] = select_changes()
+    end
   end
 end
