@@ -134,15 +134,22 @@ defmodule CaptureTest do
     end
 
     test "changed_from tracking is optional" do
-      query!("UPDATE carbonite_default.triggers SET store_changed_from = FALSE;")
-
       TestRepo.transaction(fn ->
         insert_transaction()
         insert_jack()
         query!("UPDATE rabbits SET name = 'Jane' WHERE name = 'Jack';")
+        query!("UPDATE carbonite_default.triggers SET store_changed_from = FALSE;")
+        query!("UPDATE rabbits SET name = 'Jiff' WHERE name = 'Jane';")
       end)
 
-      assert [%{"changed_from" => nil}, %{"changed_from" => nil}] = select_changes()
+      assert [
+               # INSERT has no changed_from
+               %{"changed_from" => nil},
+               # store_changed_from is true for rabbits (in migration)
+               %{"changed_from" => %{"name" => "Jack"}},
+               # demonstrating that it is optional
+               %{"changed_from" => nil}
+             ] = select_changes()
     end
 
     test "INSERT ON CONFLICT NOTHING is not tracked" do
