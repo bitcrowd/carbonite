@@ -11,18 +11,80 @@ defmodule Carbonite.Migrations.V8 do
 
   @type up_option :: {:carbonite_prefix, prefix()}
 
-  @spec create_capture_changes_procedure(prefix()) :: :ok
-  def create_capture_changes_procedure(prefix) do
+  defp create_record_dynamic_varchar_procedure(prefix) do
+    """
+    CREATE OR REPLACE FUNCTION #{prefix}.record_dynamic_varchar(source RECORD, col VARCHAR)
+    RETURNS VARCHAR AS
+    $body$
+    DECLARE
+      result VARCHAR;
+    BEGIN
+      EXECUTE 'SELECT $1.' || quote_ident(col) || '::TEXT' USING source INTO result;
+
+      RETURN result;
+    END;
+    $body$
+    LANGUAGE plpgsql;
+    """
+    |> squish_and_execute()
+  end
+
+  defp create_record_dynamic_varchar_agg(prefix) do
+    """
+    CREATE OR REPLACE FUNCTION #{prefix}.record_dynamic_varchar_agg(source RECORD, cols VARCHAR[])
+    RETURNS VARCHAR[] AS
+    $body$
+    DECLARE
+      col VARCHAR;
+      result VARCHAR[];
+    BEGIN
+      result := '{}';
+
+      FOREACH col IN ARRAY cols LOOP
+        result := result || (SELECT #{prefix}.record_dynamic_varchar(source, col));
+      END LOOP;
+
+      RETURN result;
+    END;
+    $body$
+    LANGUAGE plpgsql;
+    """
+    |> squish_and_execute()
+  end
+
+  defp create_jsonb_redact_keys_procedure(prefix) do
+    """
+    CREATE OR REPLACE FUNCTION #{prefix}.jsonb_redact_keys(source JSONB, keys VARCHAR[]) RETURNS JSONB AS
+    $body$
+    DECLARE
+      keys_intersect VARCHAR[];
+      key VARCHAR;
+    BEGIN
+      SELECT ARRAY(
+        SELECT UNNEST(ARRAY(SELECT jsonb_object_keys(source)))
+        INTERSECT
+        SELECT UNNEST(keys)
+      ) INTO keys_intersect;
+
+      FOREACH key IN ARRAY keys_intersect LOOP
+        source := jsonb_set(source, ('{' || key || '}')::TEXT[], jsonb('"[FILTERED]"'));
+      END LOOP;
+
+      RETURN source;
+    END;
+    $body$
+    LANGUAGE plpgsql;
+    """
+    |> squish_and_execute()
+  end
+
+  defp create_capture_changes_procedure(prefix) do
     """
     CREATE OR REPLACE FUNCTION #{prefix}.capture_changes() RETURNS TRIGGER AS
     $body$
     DECLARE
       trigger_row #{prefix}.triggers;
       change_row #{prefix}.changes;
-      pk_source RECORD;
-      col_name VARCHAR;
-      pk_col_val VARCHAR;
-      old_value JSONB;
     BEGIN
       /* load trigger config */
       SELECT *
@@ -38,7 +100,7 @@ defmodule Carbonite.Migrations.V8 do
       END IF;
 
       /* instantiate change row */
-      change_row = ROW(
+      change_row := ROW(
         NEXTVAL('#{prefix}.changes_id_seq'),
         pg_current_xact_id(),
         LOWER(TG_OP::TEXT),
@@ -51,60 +113,57 @@ defmodule Carbonite.Migrations.V8 do
         NULL
       );
 
-      /* build table_pk */
+      /* collect table pk */
       IF trigger_row.primary_key_columns != '{}' THEN
         IF (TG_OP IN ('INSERT', 'UPDATE')) THEN
-          pk_source := NEW;
+          SELECT #{prefix}.record_dynamic_varchar_agg(NEW, trigger_row.primary_key_columns)
+          INTO change_row.table_pk;
         ELSIF (TG_OP = 'DELETE') THEN
-          pk_source := OLD;
+          SELECT #{prefix}.record_dynamic_varchar_agg(OLD, trigger_row.primary_key_columns)
+          INTO change_row.table_pk;
         END IF;
-
-        change_row.table_pk := '{}';
-
-        FOREACH col_name IN ARRAY trigger_row.primary_key_columns LOOP
-          EXECUTE 'SELECT $1.' || col_name || '::TEXT' USING pk_source INTO pk_col_val;
-          change_row.table_pk := change_row.table_pk || pk_col_val;
-        END LOOP;
       END IF;
 
-      /* fill in changed data */
+      /* collect version data */
+      IF (TG_OP IN ('INSERT', 'UPDATE')) THEN
+        SELECT to_jsonb(NEW.*) - trigger_row.excluded_columns
+        INTO change_row.data;
+      ELSIF (TG_OP = 'DELETE') THEN
+        SELECT to_jsonb(OLD.*) - trigger_row.excluded_columns
+        INTO change_row.data;
+      END IF;
+
+      /* change tracking for UPDATEs */
       IF (TG_OP = 'UPDATE') THEN
-        change_row.data = to_jsonb(NEW.*) - trigger_row.excluded_columns;
         change_row.changed_from = '{}'::JSONB;
 
-        FOR col_name, old_value
-        IN SELECT * FROM jsonb_each(to_jsonb(OLD.*) - trigger_row.excluded_columns)
-        LOOP
-          IF (change_row.data->col_name)::JSONB != old_value THEN
-            change_row.changed_from := jsonb_set(change_row.changed_from, ARRAY[col_name], old_value);
-          END IF;
-        END LOOP;
+        SELECT jsonb_object_agg(before.key, before.value)
+        FROM jsonb_each(to_jsonb(OLD.*) - trigger_row.excluded_columns) AS before
+        WHERE (change_row.data->before.key)::JSONB != before.value
+        INTO change_row.changed_from;
 
-        change_row.changed := ARRAY(SELECT jsonb_object_keys(change_row.changed_from));
+        SELECT ARRAY(SELECT jsonb_object_keys(change_row.changed_from))
+        INTO change_row.changed;
 
+        /* skip persisting this update if nothing has changed */
         IF change_row.changed = '{}' THEN
-          /* All changed fields are ignored. Skip this update. */
           RETURN NULL;
         END IF;
 
-        /* Persisting the old data is opt-in, discard if not configured. */
+        /* persisting the old data is opt-in, discard if not configured. */
         IF trigger_row.store_changed_from IS FALSE THEN
           change_row.changed_from := NULL;
         END IF;
-      ELSIF (TG_OP = 'DELETE') THEN
-        change_row.data = to_jsonb(OLD.*) - trigger_row.excluded_columns;
-      ELSIF (TG_OP = 'INSERT') THEN
-        change_row.data = to_jsonb(NEW.*) - trigger_row.excluded_columns;
       END IF;
 
       /* filtered columns */
-      FOREACH col_name IN ARRAY trigger_row.filtered_columns LOOP
-        change_row.data = jsonb_set(change_row.data, ('{' || col_name || '}')::TEXT[], jsonb('"[FILTERED]"'));
+      SELECT #{prefix}.jsonb_redact_keys(change_row.data, trigger_row.filtered_columns)
+      INTO change_row.data;
 
-        IF trigger_row.store_changed_from IS NOT NULL THEN
-          change_row.changed_from = jsonb_set(change_row.changed_from , ('{' || col_name || '}')::TEXT[], jsonb('"[FILTERED]"'));
-        END IF;
-      END LOOP;
+      IF change_row.changed_from IS NOT NULL THEN
+        SELECT #{prefix}.jsonb_redact_keys(change_row.changed_from, trigger_row.filtered_columns)
+        INTO change_row.changed_from;
+      END IF;
 
       /* insert, fail gracefully unless transaction record present or NEXTVAL has never been called */
       BEGIN
@@ -141,6 +200,9 @@ defmodule Carbonite.Migrations.V8 do
   def up(opts) do
     prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
+    create_record_dynamic_varchar_procedure(prefix)
+    create_record_dynamic_varchar_agg(prefix)
+    create_jsonb_redact_keys_procedure(prefix)
     create_capture_changes_procedure(prefix)
 
     :ok

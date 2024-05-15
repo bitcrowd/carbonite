@@ -404,5 +404,19 @@ defmodule CaptureTest do
                %{"changed_from" => %{"name" => "[FILTERED]"}}
              ] = select_changes()
     end
+
+    test "unknown columns in filtered_columns do not affect the result" do
+      TestRepo.transaction(fn ->
+        query!("""
+        UPDATE carbonite_default.triggers SET filtered_columns = '{doesnotexist}';
+        """)
+
+        insert_transaction()
+        insert_jack()
+      end)
+
+      assert [%{"data" => data}] = select_changes()
+      refute Map.has_key?(data, "doesnotexist")
+    end
   end
 end
