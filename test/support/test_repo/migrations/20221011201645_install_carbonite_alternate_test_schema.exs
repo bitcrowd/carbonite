@@ -4,7 +4,7 @@ defmodule Carbonite.TestRepo.Migrations.InstallCarboniteAlternateTestSchema do
   use Ecto.Migration
 
   def up do
-    Carbonite.Migrations.up(1..7, carbonite_prefix: "alternate_test_schema")
+    Carbonite.Migrations.up(1..8, carbonite_prefix: "alternate_test_schema")
 
     Carbonite.Migrations.create_trigger(:rabbits, carbonite_prefix: "alternate_test_schema")
 
@@ -20,6 +20,6 @@ defmodule Carbonite.TestRepo.Migrations.InstallCarboniteAlternateTestSchema do
   def down do
     Carbonite.Migrations.drop_trigger(:rabbits, carbonite_prefix: "alternate_test_schema")
 
-    Carbonite.Migrations.down(7..1, carbonite_prefix: "alternate_test_schema")
+    Carbonite.Migrations.down(8..1, carbonite_prefix: "alternate_test_schema")
   end
 end
