@@ -1,4 +1,4 @@
-## Unreleased
+## [0.12.0] - 2024-05-17
 
 **New migration patches:** 8
 
