@@ -1,3 +1,9 @@
+## [0.12.1] - 2024-05-21
+
+### Fixed
+
+- Fix incomplete rollback logic in migration 8, leading to leftover procedures in the carbonite prefix when rolling back all the way (e.g. `Carbonite.Migrations.down(8..1)`). (#100, @xadhoom)
+
 ## [0.12.0] - 2024-05-17
 
 **New migration patches:** 8
