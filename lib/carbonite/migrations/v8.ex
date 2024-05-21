@@ -216,6 +216,9 @@ defmodule Carbonite.Migrations.V8 do
     prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
     V6.create_capture_changes_procedure(prefix)
+    execute("DROP FUNCTION #{prefix}.jsonb_redact_keys;")
+    execute("DROP FUNCTION #{prefix}.record_dynamic_varchar_agg;")
+    execute("DROP FUNCTION #{prefix}.record_dynamic_varchar;")
 
     :ok
   end
