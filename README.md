@@ -93,7 +93,7 @@ Due to its use of [`pg_current_xact_id`](https://www.postgresql.org/docs/13/func
 # mix.exs
 def deps do
   [
-    {:carbonite, "~> 0.12.1"}
+    {:carbonite, "~> 0.13.0"}
   ]
 end
 ```
@@ -120,7 +120,7 @@ defmodule MyApp.Repo.Migrations.InstallCarbonite do
   use Ecto.Migration
 
   def up do
-    Carbonite.Migrations.up(1..8)
+    Carbonite.Migrations.up(1..9)
 
     # For each table that you want to capture changes of, you need to install the trigger.
     Carbonite.Migrations.create_trigger(:rabbits)
@@ -140,7 +140,7 @@ defmodule MyApp.Repo.Migrations.InstallCarbonite do
     Carbonite.Migrations.drop_trigger(:rabbits)
 
     # Drop the Carbonite tables.
-    Carbonite.Migrations.down(8..1)
+    Carbonite.Migrations.down(9..1)
   end
 end
 ```
