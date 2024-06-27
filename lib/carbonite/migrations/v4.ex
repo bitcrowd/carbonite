@@ -125,6 +125,40 @@ defmodule Carbonite.Migrations.V4 do
     :ok
   end
 
+  @spec create_set_transaction_id_procedure(prefix()) :: :ok
+  def create_set_transaction_id_procedure(prefix) do
+    """
+    CREATE OR REPLACE FUNCTION #{prefix}.set_transaction_id() RETURNS TRIGGER AS
+    $body$
+    BEGIN
+      BEGIN
+        /* verify that no previous INSERT within current transaction (with same id) */
+        IF
+          EXISTS(
+            SELECT 1 FROM #{prefix}.transactions
+            WHERE id = COALESCE(NEW.id, CURRVAL('#{prefix}.transactions_id_seq'))
+            AND xact_id = COALESCE(NEW.xact_id, pg_current_xact_id())
+          )
+        THEN
+          NEW.id = COALESCE(NEW.id, CURRVAL('#{prefix}.transactions_id_seq'));
+        END IF;
+      EXCEPTION WHEN object_not_in_prerequisite_state THEN
+        /* when NEXTVAL has never been called within session, we're good */
+      END;
+
+      NEW.id = COALESCE(NEW.id, NEXTVAL('#{prefix}.transactions_id_seq'));
+      NEW.xact_id = COALESCE(NEW.xact_id, pg_current_xact_id());
+
+      RETURN NEW;
+    END
+    $body$
+    LANGUAGE plpgsql;
+    """
+    |> squish_and_execute()
+
+    :ok
+  end
+
   @impl true
   @spec up([up_option()]) :: :ok
   def up(opts) do
@@ -161,34 +195,7 @@ defmodule Carbonite.Migrations.V4 do
     """
     |> squish_and_execute()
 
-    """
-    CREATE OR REPLACE FUNCTION #{prefix}.set_transaction_id() RETURNS TRIGGER AS
-    $body$
-    BEGIN
-      BEGIN
-        /* verify that no previous INSERT within current transaction (with same id) */
-        IF
-          EXISTS(
-            SELECT 1 FROM #{prefix}.transactions
-            WHERE id = COALESCE(NEW.id, CURRVAL('#{prefix}.transactions_id_seq'))
-            AND xact_id = COALESCE(NEW.xact_id, pg_current_xact_id())
-          )
-        THEN
-          NEW.id = COALESCE(NEW.id, CURRVAL('#{prefix}.transactions_id_seq'));
-        END IF;
-      EXCEPTION WHEN object_not_in_prerequisite_state THEN
-        /* when NEXTVAL has never been called within session, we're good */
-      END;
-
-      NEW.id = COALESCE(NEW.id, NEXTVAL('#{prefix}.transactions_id_seq'));
-      NEW.xact_id = COALESCE(NEW.xact_id, pg_current_xact_id());
-
-      RETURN NEW;
-    END
-    $body$
-    LANGUAGE plpgsql;
-    """
-    |> squish_and_execute()
+    create_set_transaction_id_procedure(prefix)
 
     # ------------- override_xact_id -------------
 

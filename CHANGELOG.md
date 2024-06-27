@@ -1,3 +1,11 @@
+## Unreleased
+
+**New migration patches:** 9
+
+### Fixed
+
+- Fix `set_transaction_id` trigger not using the PK index on `transactions` due to being dependent on `CURRVAL` for every row. Replaced with a CTE the `EXIST` query is now an index-only scan as it was intended to be. As a consequence, scalability of inserts into the `transactions` table has been greatly improved.
+
 ## [0.12.1] - 2024-05-21
 
 ### Fixed
