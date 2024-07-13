@@ -19,11 +19,8 @@ defmodule Carbonite.APICase do
   end
 
   setup tags do
-    :ok = Sandbox.checkout(TestRepo)
-
-    unless tags[:async] do
-      Sandbox.mode(TestRepo, {:shared, self()})
-    end
+    pid = Sandbox.start_owner!(Carbonite.TestRepo, shared: not tags[:async])
+    on_exit(fn -> Sandbox.stop_owner(pid) end)
 
     :ok
   end
