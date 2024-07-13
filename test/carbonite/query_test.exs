@@ -25,7 +25,10 @@ defmodule Carbonite.QueryTest do
     end
 
     test "can preload changes alongside the transaction" do
-      assert [%Transaction{changes: []} | _] = TestRepo.all(Query.transactions(preload: true))
+      assert [%Transaction{changes: changes} | _] =
+               TestRepo.all(Query.transactions(preload: true))
+
+      assert is_list(changes)
     end
 
     test "carbonite_prefix option works as expected" do

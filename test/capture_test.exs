@@ -28,7 +28,7 @@ defmodule CaptureTest do
   end
 
   defp select_changes do
-    "SELECT * FROM carbonite_default.changes;"
+    "SELECT * FROM carbonite_default.changes ORDER BY id ASC;"
     |> query!()
     |> postgrex_result_to_structs()
   end
