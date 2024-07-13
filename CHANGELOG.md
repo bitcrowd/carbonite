@@ -1,3 +1,11 @@
+## Unreleased
+
+**New migration patches:** 10
+
+### Fixed
+
+- Improve performance of test setups by using a transaction-local variable in `override_mode/2` . The previous implementation could cause parallel tests to wait for row locks on the `triggers` table.
+
 ## [0.13.0] - 2024-06-27
 
 **New migration patches:** 9

@@ -444,7 +444,14 @@ Carbonite.purge(MyApp.Repo)
 
 One of Carbonite's key features is that it is virtually impossible to forget to record a change to a table (due to the trigger) or to forget to insert an enclosing `Carbonite.Transaction` beforehand (due to the foreign key constraint between `changes` and `transactions`). However, in some circumstances it may be desirable to temporarily switch off change capturing. One such situation is the use of factories (e.g. ExMachina) inside your test suite: Inserting a transaction before each factory call quickly becomes cumbersome and will unnecessarily increase execution time. Additionally, the use of Ecto's SQL sandbox means that your factory calls are contained in the same transaction as your domain logic, which means you cannot simply insert a `Carbonite.Transaction` before your factories if you intend to assert on the one inserted by your domain logic.
 
-To bypass the capture trigger, Carbonite's trigger configuration provides a toggle mechanism consisting of two fields: `mode` and `override_xact_id`. The former you set while installing the trigger on a table in a migration, while the latter allows to "override" whatever has been set, at runtime and only for the current transaction. If you are using Ecto's SQL sandbox for running transactional tests, this means the override is going to be active until the end of the test case.
+To bypass the capture trigger, Carbonite's trigger configuration provides a
+toggle mechanism consisting of two factors: the `triggers.mode` field defining
+the default mode and the `Carbonite.override_mode/2` function. The former you
+set while installing the trigger on a table in a migration, while the latter
+allows to "override" whatever has been set, at runtime and limited to the current
+transaction. If you are using Ecto's SQL sandbox for running transactional
+tests, this means the override is going to be active until the end of the test
+case.
 
 As a result, you have two options:
 
