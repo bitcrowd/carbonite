@@ -156,8 +156,7 @@ defmodule Carbonite.Migrations.V1 do
       add(:id, :xid8, null: false, primary_key: true)
       add(:meta, :map, null: false, default: %{})
       add(:processed_at, :utc_datetime_usec)
-
-      timestamps(updated_at: false, type: :utc_datetime_usec)
+      add(:inserted_at, :utc_datetime_usec, null: false)
     end
 
     create(
@@ -221,8 +220,8 @@ defmodule Carbonite.Migrations.V1 do
       add(:filtered_columns, {:array, :string}, null: false)
       add(:mode, :"#{prefix}.trigger_mode", null: false)
       add(:override_transaction_id, :xid8, null: true)
-
-      timestamps()
+      add(:inserted_at, :utc_datetime_usec, null: false)
+      add(:updated_at, :utc_datetime_usec, null: false)
     end
 
     create_triggers_table_index(prefix)

@@ -19,8 +19,8 @@ defmodule Carbonite.Migrations.V3 do
       add(:name, :string, null: false, primary_key: true)
       add(:memo, :map, null: false, default: "{}")
       add(:last_transaction_id, :xid8, null: false, default: "0")
-
-      timestamps(type: :utc_datetime_usec)
+      add(:inserted_at, :utc_datetime_usec, null: false)
+      add(:updated_at, :utc_datetime_usec, null: false)
     end
 
     alter table("transactions", prefix: prefix) do
