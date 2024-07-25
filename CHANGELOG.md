@@ -5,6 +5,7 @@
 ### Fixed
 
 - Improve performance of test setups by using a transaction-local variable in `override_mode/2` . The previous implementation could cause parallel tests to wait for row locks on the `triggers` table.
+- Replaced calls to `Ecto.Migration.timestamps/1` in migrations with explicit `add(:inserted_at, ...)` calls. This ensures that we don't be affected by users' `@migration_timestamps` options.
 
 ## [0.13.0] - 2024-06-27
 
