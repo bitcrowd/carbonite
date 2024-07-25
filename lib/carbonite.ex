@@ -13,7 +13,6 @@ defmodule Carbonite do
 
   @moduledoc since: "0.1.0"
 
-  import Ecto.Query
   alias Carbonite.{Outbox, Prefix, Query, Schema, Transaction, Trigger}
   require Prefix
   require Schema
@@ -120,31 +119,19 @@ defmodule Carbonite do
 
   ## Options
 
-  * `to` - allows to specify the target mode, useful to reset the mode after use
+  * `to` - allows to specify the target mode
   * `carbonite_prefix` - defines the audit trail's schema, defaults to `"carbonite_default"`
   """
   @doc since: "0.4.0"
   @spec override_mode(repo()) :: :ok
   @spec override_mode(repo(), [{:to, Trigger.mode()} | prefix_option()]) :: :ok
   def override_mode(repo, opts \\ []) do
-    opts
-    |> Keyword.take([:carbonite_prefix])
-    |> Query.triggers()
-    |> update([], set: [override_xact_id: ^override_xact_id(opts)])
-    |> repo.update_all([])
+    carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
+    mode = Keyword.get(opts, :to, :override)
+
+    repo.query!("SET LOCAL #{carbonite_prefix}.override_mode = '#{mode}';")
 
     :ok
-  end
-
-  defp override_xact_id(opts) do
-    if mode = Keyword.get(opts, :to) do
-      dynamic(
-        [],
-        fragment("CASE WHEN mode != ? THEN pg_current_xact_id() ELSE NULL END", ^to_string(mode))
-      )
-    else
-      dynamic([], fragment("pg_current_xact_id()"))
-    end
   end
 
   @type process_option ::

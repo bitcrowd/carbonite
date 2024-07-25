@@ -18,7 +18,7 @@ defmodule Carbonite.Migrations do
   # --------------------------------- patch levels ---------------------------------
 
   @initial_patch 1
-  @current_patch 9
+  @current_patch 10
 
   @doc false
   @spec initial_patch :: non_neg_integer()
@@ -27,6 +27,10 @@ defmodule Carbonite.Migrations do
   @doc false
   @spec current_patch :: non_neg_integer()
   def current_patch, do: @current_patch
+
+  @doc false
+  @spec patch_range :: Range.t()
+  def patch_range, do: @initial_patch..@current_patch
 
   # --------------------------------- main schema ----------------------------------
 

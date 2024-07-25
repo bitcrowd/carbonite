@@ -267,7 +267,7 @@ defmodule CaptureTest do
 
     test "a friendly error is raised when transaction is not inserted or is inserted too late" do
       msg =
-        "ERROR 23503 (foreign_key_violation) INSERT on table public.rabbits " <>
+        "ERROR 23503 (foreign_key_violation) (carbonite) INSERT on table public.rabbits " <>
           "without prior INSERT into carbonite_default.transactions"
 
       # Case 1: Session has never called `NEXTVAL` -> `CURRVAL` fails.
@@ -310,7 +310,7 @@ defmodule CaptureTest do
 
     test "initially deferred trigger still requires a transaction to be inserted" do
       msg =
-        "ERROR 23503 (foreign_key_violation) INSERT on table public.deferred_rabbits " <>
+        "ERROR 23503 (foreign_key_violation) (carbonite) INSERT on table public.deferred_rabbits " <>
           "without prior INSERT into carbonite_default.transactions"
 
       assert_raise Postgrex.Error, msg, fn ->
@@ -324,11 +324,19 @@ defmodule CaptureTest do
   end
 
   describe "default mode / override mode" do
-    test "override mode reverses the default mode" do
+    test "override mode can set the mode explicitly" do
       TestRepo.transaction(fn ->
-        query!("""
-        UPDATE carbonite_default.triggers SET override_xact_id = pg_current_xact_id();
-        """)
+        query!("SET LOCAL carbonite_default.override_mode = 'ignore';")
+
+        insert_jack()
+      end)
+
+      assert select_changes() == []
+    end
+
+    test "override mode can reverse the configured mode" do
+      TestRepo.transaction(fn ->
+        query!("SET LOCAL carbonite_default.override_mode = 'override';")
 
         insert_jack()
       end)

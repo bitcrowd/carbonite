@@ -120,6 +120,27 @@ defmodule Carbonite.Migrations.V1 do
     |> squish_and_execute()
   end
 
+  @spec create_triggers_table_index(prefix()) :: :ok
+  @spec create_triggers_table_index(prefix(), atom()) :: :ok
+  def create_triggers_table_index(prefix, override_transaction_id \\ :override_transaction_id) do
+    create(
+      index("triggers", [:table_prefix, :table_name],
+        name: "table_index",
+        unique: true,
+        include: [
+          :primary_key_columns,
+          :excluded_columns,
+          :filtered_columns,
+          :mode,
+          override_transaction_id
+        ],
+        prefix: prefix
+      )
+    )
+
+    :ok
+  end
+
   @impl true
   @spec up([up_option()]) :: :ok
   def up(opts) do
@@ -204,20 +225,7 @@ defmodule Carbonite.Migrations.V1 do
       timestamps()
     end
 
-    create(
-      index("triggers", [:table_prefix, :table_name],
-        name: "table_index",
-        unique: true,
-        include: [
-          :primary_key_columns,
-          :excluded_columns,
-          :filtered_columns,
-          :mode,
-          :override_transaction_id
-        ],
-        prefix: prefix
-      )
-    )
+    create_triggers_table_index(prefix)
 
     # ------------- Capture Function -------------
 

@@ -23,7 +23,6 @@ defmodule Carbonite.Trigger do
           filtered_columns: [String.t()],
           store_changed_from: boolean(),
           mode: mode(),
-          override_xact_id: nil | non_neg_integer(),
           inserted_at: DateTime.t(),
           updated_at: DateTime.t()
         }
@@ -36,7 +35,6 @@ defmodule Carbonite.Trigger do
     field(:filtered_columns, {:array, :string})
     field(:store_changed_from, :boolean)
     field(:mode, Ecto.Enum, values: [:capture, :ignore])
-    field(:override_xact_id, :integer)
 
     timestamps()
   end

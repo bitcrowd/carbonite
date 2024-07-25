@@ -1,102 +1,43 @@
 # SPDX-License-Identifier: Apache-2.0
 
-defmodule Carbonite.Migrations.V8 do
+defmodule Carbonite.Migrations.V10 do
   @moduledoc false
 
   use Ecto.Migration
   use Carbonite.Migrations.Version
-  alias Carbonite.Migrations.V6
+  alias Carbonite.Migrations.{V1, V8}
 
   @type prefix :: binary()
 
   @type up_option :: {:carbonite_prefix, prefix()}
 
-  defp create_record_dynamic_varchar_procedure(prefix) do
-    """
-    CREATE OR REPLACE FUNCTION #{prefix}.record_dynamic_varchar(source RECORD, col VARCHAR)
-    RETURNS VARCHAR AS
-    $body$
-    DECLARE
-      result VARCHAR;
-    BEGIN
-      EXECUTE 'SELECT $1.' || quote_ident(col) || '::TEXT' USING source INTO result;
-
-      RETURN result;
-    END;
-    $body$
-    LANGUAGE plpgsql;
-    """
-    |> squish_and_execute()
-  end
-
-  defp create_record_dynamic_varchar_agg(prefix) do
-    """
-    CREATE OR REPLACE FUNCTION #{prefix}.record_dynamic_varchar_agg(source RECORD, cols VARCHAR[])
-    RETURNS VARCHAR[] AS
-    $body$
-    DECLARE
-      col VARCHAR;
-      result VARCHAR[];
-    BEGIN
-      result := '{}';
-
-      FOREACH col IN ARRAY cols LOOP
-        result := result || (SELECT #{prefix}.record_dynamic_varchar(source, col));
-      END LOOP;
-
-      RETURN result;
-    END;
-    $body$
-    LANGUAGE plpgsql;
-    """
-    |> squish_and_execute()
-  end
-
-  defp create_jsonb_redact_keys_procedure(prefix) do
-    """
-    CREATE OR REPLACE FUNCTION #{prefix}.jsonb_redact_keys(source JSONB, keys VARCHAR[]) RETURNS JSONB AS
-    $body$
-    DECLARE
-      keys_intersect VARCHAR[];
-      key VARCHAR;
-    BEGIN
-      SELECT ARRAY(
-        SELECT UNNEST(ARRAY(SELECT jsonb_object_keys(source)))
-        INTERSECT
-        SELECT UNNEST(keys)
-      ) INTO keys_intersect;
-
-      FOREACH key IN ARRAY keys_intersect LOOP
-        source := jsonb_set(source, ('{' || key || '}')::TEXT[], jsonb('"[FILTERED]"'));
-      END LOOP;
-
-      RETURN source;
-    END;
-    $body$
-    LANGUAGE plpgsql;
-    """
-    |> squish_and_execute()
-  end
-
-  @spec create_capture_changes_procedure(prefix) :: :ok
-  def create_capture_changes_procedure(prefix) do
+  defp create_capture_changes_procedure(prefix) do
     """
     CREATE OR REPLACE FUNCTION #{prefix}.capture_changes() RETURNS TRIGGER AS
     $body$
     DECLARE
-      trigger_row #{prefix}.triggers;
+      trigger_row RECORD;
       change_row #{prefix}.changes;
     BEGIN
       /* load trigger config */
-      SELECT *
-        INTO trigger_row
-        FROM #{prefix}.triggers
-        WHERE table_prefix = TG_TABLE_SCHEMA AND table_name = TG_TABLE_NAME;
+      WITH settings AS (SELECT NULLIF(current_setting('#{prefix}.override_mode', TRUE), '')::TEXT AS override_mode)
+      SELECT
+        primary_key_columns,
+        excluded_columns,
+        filtered_columns,
+        CASE
+          WHEN settings.override_mode = 'override' AND mode = 'ignore' THEN 'capture'
+          WHEN settings.override_mode = 'override' AND mode = 'capture' THEN 'ignore'
+          ELSE COALESCE(settings.override_mode, mode::text)
+        END AS mode,
+        store_changed_from
+      INTO trigger_row
+      FROM #{prefix}.triggers
+      JOIN settings ON TRUE
+      WHERE table_prefix = TG_TABLE_SCHEMA AND table_name = TG_TABLE_NAME;
 
-      IF
-        (trigger_row.mode = 'ignore' AND (trigger_row.override_xact_id IS NULL OR trigger_row.override_xact_id != pg_current_xact_id())) OR
-        (trigger_row.mode = 'capture' AND trigger_row.override_xact_id = pg_current_xact_id())
-      THEN
+      /* skip if ignored */
+      IF (trigger_row.mode = 'ignore') THEN
         RETURN NULL;
       END IF;
 
@@ -182,7 +123,7 @@ defmodule Carbonite.Migrations.V8 do
 
         INSERT INTO #{prefix}.changes VALUES (change_row.*);
       EXCEPTION WHEN foreign_key_violation OR object_not_in_prerequisite_state THEN
-          RAISE '% on table %.% without prior INSERT into #{prefix}.transactions',
+          RAISE '(carbonite) % on table %.% without prior INSERT into #{prefix}.transactions',
             TG_OP, TG_TABLE_SCHEMA, TG_TABLE_NAME USING ERRCODE = 'foreign_key_violation';
       END;
 
@@ -201,10 +142,29 @@ defmodule Carbonite.Migrations.V8 do
   def up(opts) do
     prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
-    create_record_dynamic_varchar_procedure(prefix)
-    create_record_dynamic_varchar_agg(prefix)
-    create_jsonb_redact_keys_procedure(prefix)
     create_capture_changes_procedure(prefix)
+
+    # Drops the table_index automatically.
+    alter table(:triggers, prefix: prefix) do
+      remove(:override_xact_id)
+    end
+
+    # This trigger is in fact rarely used when the triggers table is small. But let's keep it
+    # in case someone has a lot of triggers in there.
+    create(
+      index("triggers", [:table_prefix, :table_name],
+        name: "triggers_table_index",
+        unique: true,
+        include: [
+          :primary_key_columns,
+          :excluded_columns,
+          :filtered_columns,
+          :mode,
+          :store_changed_from
+        ],
+        prefix: prefix
+      )
+    )
 
     :ok
   end
@@ -216,10 +176,14 @@ defmodule Carbonite.Migrations.V8 do
   def down(opts) do
     prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
-    V6.create_capture_changes_procedure(prefix)
-    execute("DROP FUNCTION #{prefix}.jsonb_redact_keys;")
-    execute("DROP FUNCTION #{prefix}.record_dynamic_varchar_agg;")
-    execute("DROP FUNCTION #{prefix}.record_dynamic_varchar;")
+    alter table(:triggers, prefix: prefix) do
+      add(:override_xact_id, :xid8, null: true)
+    end
+
+    execute("DROP INDEX #{prefix}.triggers_table_index;")
+    V1.create_triggers_table_index(prefix, :override_xact_id)
+
+    V8.create_capture_changes_procedure(prefix)
 
     :ok
   end
