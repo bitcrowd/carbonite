@@ -1,3 +1,9 @@
+## Unreleased
+
+### Added
+
+* Add `:order_by` option to `Carbonite.Query.changes/2` to either disable default ordering or specify the order.
+
 ## [0.14.0] - 2024-07-25
 
 **New migration patches:** 10
