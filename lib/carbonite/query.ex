@@ -16,6 +16,7 @@ defmodule Carbonite.Query do
 
   @type prefix_option :: {:carbonite_prefix, prefix()}
   @type preload_option :: {:preload, boolean()}
+  @type order_by_option :: {:order_by, false | nil | term()}
 
   @type transactions_option :: prefix_option() | preload_option()
 
@@ -181,7 +182,8 @@ defmodule Carbonite.Query do
 
   @default_table_prefix "public"
 
-  @type changes_option :: prefix_option() | preload_option() | {:table_prefix, prefix()}
+  @type changes_option ::
+          prefix_option() | preload_option() | order_by_option() | {:table_prefix, prefix()}
 
   @doc """
   Returns an `t:Ecto.Query.t/0` that can be used to select changes for a single record.
@@ -201,6 +203,7 @@ defmodule Carbonite.Query do
   * `carbonite_prefix` defines the audit trail's schema, defaults to `"carbonite_default"`
   * `table_prefix` allows to override the table prefix, defaults to schema prefix of the record
   * `preload` can be used to preload the transaction
+  * `order_by` allows to override the ordering, defaults to `{:asc, :id}`
   """
   @doc since: "0.2.0"
   @spec changes(record :: Ecto.Schema.t()) :: Ecto.Query.t()
@@ -223,7 +226,7 @@ defmodule Carbonite.Query do
     |> where([c], c.table_name == ^table_name)
     |> where([c], c.table_pk == ^table_pk)
     |> maybe_preload(opts, :transaction, from_with_prefix(Transaction, opts))
-    |> order_by({:asc, :id})
+    |> maybe_order_by(opts)
   end
 
   defp maybe_apply(queryable, opts, key, default, fun) do
@@ -231,6 +234,16 @@ defmodule Carbonite.Query do
       fun.(queryable, value)
     else
       queryable
+    end
+  end
+
+  defp maybe_order_by(queryable, opts) do
+    case Keyword.get(opts, :order_by, {:asc, :id}) do
+      order_by when order_by in [false, nil] ->
+        queryable
+
+      {direction, field} ->
+        order_by(queryable, {^direction, ^field})
     end
   end
 
