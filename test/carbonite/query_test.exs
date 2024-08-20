@@ -189,14 +189,14 @@ defmodule Carbonite.QueryTest do
       assert Map.get(Query.changes(rabbit, order_by: false), :order_bys) == []
     end
 
-    test "can set custom ordering", %{rabbit2: rabbit2} do
-      rabbit2
+    test "can set custom ordering", %{rabbit: rabbit} do
+      rabbit
       |> Rabbit.rename_changeset("Gerda")
       |> TestRepo.update!()
 
-      [_, _] = descending_ids = changes(rabbit2, order_by: {:desc, :id})
+      [_, _] = descending_ids = changes(rabbit, order_by: {:desc, :id})
 
-      assert Enum.reverse(descending_ids) == changes(rabbit2)
+      assert Enum.reverse(descending_ids) == changes(rabbit)
     end
 
     test "can preload the transaction", %{rabbit: rabbit} do
