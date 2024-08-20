@@ -242,8 +242,8 @@ defmodule Carbonite.Query do
       order_by when order_by in [false, nil] ->
         queryable
 
-      {direction, field} ->
-        order_by(queryable, {^direction, ^field})
+      value ->
+        order_by(queryable, ^value)
     end
   end
 
