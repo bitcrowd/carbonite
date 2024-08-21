@@ -1,8 +1,16 @@
+## Unreleased
+
+**New migration patches:** 11
+
+### Fixed
+
+- Reverted refactoring from v0.12 causing an exception in Postgres 14.0 to 14.5 when inserting into or deleting from multiple tables within a single transaction.
+
 ## [0.14.1] - 2024-08-20
 
 ### Added
 
-* Add `:order_by` option to `Carbonite.Query.changes/2` to either disable default ordering or specify the order.
+- Add `:order_by` option to `Carbonite.Query.changes/2` to either disable default ordering or specify the order.
 
 ## [0.14.0] - 2024-07-25
 
