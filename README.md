@@ -120,7 +120,7 @@ defmodule MyApp.Repo.Migrations.InstallCarbonite do
   use Ecto.Migration
 
   def up do
-    Carbonite.Migrations.up(1..10)
+    Carbonite.Migrations.up(1..11)
 
     # For each table that you want to capture changes of, you need to install the trigger.
     Carbonite.Migrations.create_trigger(:rabbits)
@@ -140,7 +140,7 @@ defmodule MyApp.Repo.Migrations.InstallCarbonite do
     Carbonite.Migrations.drop_trigger(:rabbits)
 
     # Drop the Carbonite tables.
-    Carbonite.Migrations.down(10..1)
+    Carbonite.Migrations.down(11..1)
   end
 end
 ```
