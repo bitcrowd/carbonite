@@ -1,104 +1,45 @@
 # SPDX-License-Identifier: Apache-2.0
 
-defmodule Carbonite.Migrations.V8 do
+defmodule Carbonite.Migrations.V11 do
   @moduledoc false
 
   use Ecto.Migration
   use Carbonite.Migrations.Version
-  alias Carbonite.Migrations.V6
+  alias Carbonite.Migrations.{V8, V10}
 
   @type prefix :: binary()
 
-  @type up_option :: {:carbonite_prefix, prefix()}
-
-  @spec create_record_dynamic_varchar_procedure(prefix) :: :ok
-  def create_record_dynamic_varchar_procedure(prefix) do
-    """
-    CREATE OR REPLACE FUNCTION #{prefix}.record_dynamic_varchar(source RECORD, col VARCHAR)
-    RETURNS VARCHAR AS
-    $body$
-    DECLARE
-      result VARCHAR;
-    BEGIN
-      EXECUTE 'SELECT $1.' || quote_ident(col) || '::TEXT' USING source INTO result;
-
-      RETURN result;
-    END;
-    $body$
-    LANGUAGE plpgsql;
-    """
-    |> squish_and_execute()
-  end
-
-  @spec create_record_dynamic_varchar_agg_procedure(prefix) :: :ok
-  def create_record_dynamic_varchar_agg_procedure(prefix) do
-    """
-    CREATE OR REPLACE FUNCTION #{prefix}.record_dynamic_varchar_agg(source RECORD, cols VARCHAR[])
-    RETURNS VARCHAR[] AS
-    $body$
-    DECLARE
-      col VARCHAR;
-      result VARCHAR[];
-    BEGIN
-      result := '{}';
-
-      FOREACH col IN ARRAY cols LOOP
-        result := result || (SELECT #{prefix}.record_dynamic_varchar(source, col));
-      END LOOP;
-
-      RETURN result;
-    END;
-    $body$
-    LANGUAGE plpgsql;
-    """
-    |> squish_and_execute()
-  end
-
-  defp create_jsonb_redact_keys_procedure(prefix) do
-    """
-    CREATE OR REPLACE FUNCTION #{prefix}.jsonb_redact_keys(source JSONB, keys VARCHAR[]) RETURNS JSONB AS
-    $body$
-    DECLARE
-      keys_intersect VARCHAR[];
-      key VARCHAR;
-    BEGIN
-      SELECT ARRAY(
-        SELECT UNNEST(ARRAY(SELECT jsonb_object_keys(source)))
-        INTERSECT
-        SELECT UNNEST(keys)
-      ) INTO keys_intersect;
-
-      FOREACH key IN ARRAY keys_intersect LOOP
-        source := jsonb_set(source, ('{' || key || '}')::TEXT[], jsonb('"[FILTERED]"'));
-      END LOOP;
-
-      RETURN source;
-    END;
-    $body$
-    LANGUAGE plpgsql;
-    """
-    |> squish_and_execute()
-  end
-
-  @spec create_capture_changes_procedure(prefix) :: :ok
-  def create_capture_changes_procedure(prefix) do
+  defp create_capture_changes_procedure(prefix) do
     """
     CREATE OR REPLACE FUNCTION #{prefix}.capture_changes() RETURNS TRIGGER AS
     $body$
     DECLARE
-      trigger_row #{prefix}.triggers;
+      trigger_row RECORD;
       change_row #{prefix}.changes;
+
+      pk_source RECORD;
+      pk_col VARCHAR;
+      pk_col_val VARCHAR;
     BEGIN
       /* load trigger config */
-      SELECT *
-        INTO trigger_row
-        FROM #{prefix}.triggers
-        WHERE table_prefix = TG_TABLE_SCHEMA AND table_name = TG_TABLE_NAME;
+      WITH settings AS (SELECT NULLIF(current_setting('#{prefix}.override_mode', TRUE), '')::TEXT AS override_mode)
+      SELECT
+        primary_key_columns,
+        excluded_columns,
+        filtered_columns,
+        CASE
+          WHEN settings.override_mode = 'override' AND mode = 'ignore' THEN 'capture'
+          WHEN settings.override_mode = 'override' AND mode = 'capture' THEN 'ignore'
+          ELSE COALESCE(settings.override_mode, mode::text)
+        END AS mode,
+        store_changed_from
+      INTO trigger_row
+      FROM #{prefix}.triggers
+      JOIN settings ON TRUE
+      WHERE table_prefix = TG_TABLE_SCHEMA AND table_name = TG_TABLE_NAME;
 
-      IF
-        (trigger_row.mode = 'ignore' AND (trigger_row.override_xact_id IS NULL OR trigger_row.override_xact_id != pg_current_xact_id())) OR
-        (trigger_row.mode = 'capture' AND trigger_row.override_xact_id = pg_current_xact_id())
-      THEN
+      /* skip if ignored */
+      IF (trigger_row.mode = 'ignore') THEN
         RETURN NULL;
       END IF;
 
@@ -119,12 +60,16 @@ defmodule Carbonite.Migrations.V8 do
       /* collect table pk */
       IF trigger_row.primary_key_columns != '{}' THEN
         IF (TG_OP IN ('INSERT', 'UPDATE')) THEN
-          SELECT #{prefix}.record_dynamic_varchar_agg(NEW, trigger_row.primary_key_columns)
-          INTO change_row.table_pk;
+          pk_source := NEW;
         ELSIF (TG_OP = 'DELETE') THEN
-          SELECT #{prefix}.record_dynamic_varchar_agg(OLD, trigger_row.primary_key_columns)
-          INTO change_row.table_pk;
+          pk_source := OLD;
         END IF;
+
+        change_row.table_pk = '{}';
+        FOREACH pk_col IN ARRAY trigger_row.primary_key_columns LOOP
+          EXECUTE 'SELECT $1.' || quote_ident(pk_col) || '::TEXT' USING pk_source INTO pk_col_val;
+          change_row.table_pk := change_row.table_pk || pk_col_val;
+        END LOOP;
       END IF;
 
       /* collect version data */
@@ -184,7 +129,7 @@ defmodule Carbonite.Migrations.V8 do
 
         INSERT INTO #{prefix}.changes VALUES (change_row.*);
       EXCEPTION WHEN foreign_key_violation OR object_not_in_prerequisite_state THEN
-          RAISE '% on table %.% without prior INSERT into #{prefix}.transactions',
+          RAISE '(carbonite) % on table %.% without prior INSERT into #{prefix}.transactions',
             TG_OP, TG_TABLE_SCHEMA, TG_TABLE_NAME USING ERRCODE = 'foreign_key_violation';
       END;
 
@@ -198,15 +143,16 @@ defmodule Carbonite.Migrations.V8 do
     :ok
   end
 
+  @type up_option :: {:carbonite_prefix, prefix()}
+
   @impl true
   @spec up([up_option()]) :: :ok
   def up(opts) do
     prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
-    create_record_dynamic_varchar_procedure(prefix)
-    create_record_dynamic_varchar_agg_procedure(prefix)
-    create_jsonb_redact_keys_procedure(prefix)
     create_capture_changes_procedure(prefix)
+    execute("DROP FUNCTION #{prefix}.record_dynamic_varchar_agg;")
+    execute("DROP FUNCTION #{prefix}.record_dynamic_varchar;")
 
     :ok
   end
@@ -218,10 +164,9 @@ defmodule Carbonite.Migrations.V8 do
   def down(opts) do
     prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
-    V6.create_capture_changes_procedure(prefix)
-    execute("DROP FUNCTION #{prefix}.jsonb_redact_keys;")
-    execute("DROP FUNCTION #{prefix}.record_dynamic_varchar_agg;")
-    execute("DROP FUNCTION #{prefix}.record_dynamic_varchar;")
+    V8.create_record_dynamic_varchar_procedure(prefix)
+    V8.create_record_dynamic_varchar_agg_procedure(prefix)
+    V10.create_capture_changes_procedure(prefix)
 
     :ok
   end

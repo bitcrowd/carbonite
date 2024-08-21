@@ -11,7 +11,8 @@ defmodule Carbonite.Migrations.V10 do
 
   @type up_option :: {:carbonite_prefix, prefix()}
 
-  defp create_capture_changes_procedure(prefix) do
+  @spec create_capture_changes_procedure(prefix) :: :ok
+  def create_capture_changes_procedure(prefix) do
     """
     CREATE OR REPLACE FUNCTION #{prefix}.capture_changes() RETURNS TRIGGER AS
     $body$
