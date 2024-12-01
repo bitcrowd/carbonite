@@ -312,7 +312,7 @@ defmodule Carbonite.Migrations do
     :ok
   end
 
-  # ------------------------------ data migration s---------------------------------
+  # ------------------------------ data migrations ---------------------------------
 
   @type insert_migration_transaction_option :: {:carbonite_prefix, prefix()} | {:meta, map()}
 
@@ -333,7 +333,7 @@ defmodule Carbonite.Migrations do
         import Carbonite.Migrations
 
         def change do
-          insert_migration_transaction()
+          insert_migration_transaction("some-data-migration")
 
           execute("UPDATE ...", "...")
         end
@@ -347,13 +347,13 @@ defmodule Carbonite.Migrations do
         import Carbonite.Migrations
 
         def up do
-          insert_migration_transaction("some-data-migrated")
+          insert_migration_transaction("some-data-migration")
 
           execute("INSERT ...")
         end
 
         def down do
-          insert_migration_transaction("some-data-rolled-back")
+          insert_migration_transaction("some-data-migration")
 
           execute("DELETE ...")
         end
@@ -394,7 +394,7 @@ defmodule Carbonite.Migrations do
 
   This determines the `name` of the transaction from the migration's module name.
 
-       {"direction": "up","name": "my_app/repo/migrations/example", "type": "migration"}
+       {"direction": "up", "name": "my_app/repo/migrations/example", "type": "migration"}
 
   ## Example
 
@@ -411,7 +411,7 @@ defmodule Carbonite.Migrations do
 
   Alternatively, if you define your own migration template module:
 
-      defmodule MyApp.Migration do
+      defmodule MyApp.DataMigration do
         defmacro __using__ do
           quote do
             use Ecto.Migration
