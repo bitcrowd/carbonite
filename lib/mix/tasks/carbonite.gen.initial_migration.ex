@@ -59,10 +59,10 @@ defmodule Mix.Tasks.Carbonite.Gen.InitialMigration do
 
       # Configure trigger options:
       #
-      #    Carbonite.Migrations.put_trigger_option("rabbits", :primary_key_columns, ["compound", "key"])
-      #    Carbonite.Migrations.put_trigger_option("rabbits", :excluded_columns, ["private"])
-      #    Carbonite.Migrations.put_trigger_option("rabbits", :filtered_columns, ["private"])
-      #    Carbonite.Migrations.put_trigger_option("rabbits", :mode, :ignore)
+      #    Carbonite.Migrations.put_trigger_config("rabbits", :primary_key_columns, ["compound", "key"])
+      #    Carbonite.Migrations.put_trigger_config("rabbits", :excluded_columns, ["private"])
+      #    Carbonite.Migrations.put_trigger_config("rabbits", :filtered_columns, ["private"])
+      #    Carbonite.Migrations.put_trigger_config("rabbits", :mode, :ignore)
 
       # If you wish to insert an initial outbox:
       #
