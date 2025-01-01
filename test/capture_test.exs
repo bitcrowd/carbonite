@@ -427,4 +427,15 @@ defmodule CaptureTest do
       refute Map.has_key?(data, "doesnotexist")
     end
   end
+
+  describe "quoted identifiers" do
+    test "invalid or reserved table prefixes and names are quoted correctly" do
+      TestRepo.transaction(fn ->
+        insert_transaction()
+        query!(~s|INSERT INTO "default"."rabbits;" (name, age) VALUES ('Jåck', 99);|)
+      end)
+
+      assert [%{"op" => "insert"}] = select_changes()
+    end
+  end
 end
