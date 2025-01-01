@@ -8,8 +8,8 @@ defmodule Carbonite.Migrations do
   @moduledoc since: "0.1.0"
 
   use Ecto.Migration
-  import Carbonite, only: [default_prefix: 0]
   import Carbonite.Migrations.Helper
+  import Carbonite.Prefix
 
   @type patch :: non_neg_integer()
   @type prefix :: binary()

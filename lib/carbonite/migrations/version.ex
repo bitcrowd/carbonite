@@ -8,8 +8,8 @@ defmodule Carbonite.Migrations.Version do
 
   defmacro __using__(_) do
     quote do
-      import Carbonite, only: [default_prefix: 0]
       import Carbonite.Migrations.Helper
+      import Carbonite.Prefix
 
       @behaviour Carbonite.Migrations.Version
     end
