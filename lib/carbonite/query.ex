@@ -20,6 +20,16 @@ defmodule Carbonite.Query do
 
   @type transactions_option :: prefix_option() | preload_option()
 
+  # Must be a macro as when queryable is passed as a variable, Ecto won't allow setting the
+  # prefix. Only literal schema modules will allow to have their prefixes updated.
+  defmacrop from_with_prefix(queryable, opts) do
+    quote do
+      carbonite_prefix = Keyword.get(unquote(opts), :carbonite_prefix, default_prefix())
+
+      from(unquote(queryable), prefix: ^to_string(carbonite_prefix))
+    end
+  end
+
   @doc """
   Returns an `t:Ecto.Query.t/0` that can be used to select transactions from the database.
 

@@ -60,7 +60,7 @@ defmodule Carbonite.MixProject do
 
   defp deps do
     [
-      {:ecto_sql, "~> 3.6"},
+      {:ecto_sql, "~> 3.10"},
       {:jason, "~> 1.2"},
       {:postgrex, "~> 0.15 and >= 0.15.11"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
