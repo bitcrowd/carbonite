@@ -126,7 +126,7 @@ defmodule Carbonite.Migrations do
     """
     CREATE CONSTRAINT TRIGGER capture_changes_into_#{carbonite_prefix}_trigger
     AFTER INSERT OR UPDATE OR DELETE
-    ON #{table_prefix}.#{table_name}
+    ON "#{table_prefix}".#{table_name}
     DEFERRABLE INITIALLY #{initially}
     FOR EACH ROW
     EXECUTE PROCEDURE #{carbonite_prefix}.capture_changes();
@@ -183,7 +183,7 @@ defmodule Carbonite.Migrations do
 
     """
     DROP TRIGGER capture_changes_into_#{carbonite_prefix}_trigger
-    ON #{table_prefix}.#{table_name};
+    ON "#{table_prefix}".#{table_name};
     """
     |> squish_and_execute()
 
