@@ -1,16 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 
-defmodule Carbonite.Migrations.V11 do
+defmodule Carbonite.Migrations.V12 do
   @moduledoc false
 
   use Ecto.Migration
   use Carbonite.Migrations.Version
-  alias Carbonite.Migrations.{V10, V8}
+  alias Carbonite.Migrations.V11
 
   @type prefix :: binary()
 
-  @spec create_capture_changes_procedure(prefix) :: :ok
-  def create_capture_changes_procedure(prefix) do
+  defp create_capture_changes_procedure(prefix) do
     """
     CREATE OR REPLACE FUNCTION #{prefix}.capture_changes() RETURNS TRIGGER AS
     $body$
@@ -38,6 +37,11 @@ defmodule Carbonite.Migrations.V11 do
       FROM #{prefix}.triggers
       JOIN settings ON TRUE
       WHERE table_prefix = TG_TABLE_SCHEMA AND table_name = TG_TABLE_NAME;
+
+      IF (trigger_row IS NULL) THEN
+        RAISE '(carbonite) % on table %.% but no trigger record in #{prefix}.triggers',
+          TG_OP, TG_TABLE_SCHEMA, TG_TABLE_NAME USING ERRCODE = 'no_data_found';
+      END IF;
 
       /* skip if ignored */
       IF (trigger_row.mode = 'ignore') THEN
@@ -152,8 +156,6 @@ defmodule Carbonite.Migrations.V11 do
     prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
     create_capture_changes_procedure(prefix)
-    execute("DROP FUNCTION #{prefix}.record_dynamic_varchar_agg;")
-    execute("DROP FUNCTION #{prefix}.record_dynamic_varchar;")
 
     :ok
   end
@@ -165,9 +167,7 @@ defmodule Carbonite.Migrations.V11 do
   def down(opts) do
     prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
-    V8.create_record_dynamic_varchar_procedure(prefix)
-    V8.create_record_dynamic_varchar_agg_procedure(prefix)
-    V10.create_capture_changes_procedure(prefix)
+    V11.create_capture_changes_procedure(prefix)
 
     :ok
   end
