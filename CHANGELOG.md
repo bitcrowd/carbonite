@@ -1,3 +1,9 @@
+## Unreleased
+
+### Added
+
+- Better error handling when the trigger record is non-existent.
+
 ## [0.15.0] - 2025-01-01
 
 ### Fixed

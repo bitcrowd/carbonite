@@ -438,4 +438,19 @@ defmodule CaptureTest do
       assert [%{"op" => "insert"}] = select_changes()
     end
   end
+
+  test "missing trigger row lets the trigger function error gracefully" do
+    msg =
+      "ERROR P0002 (no_data_found) (carbonite) INSERT on table public.rabbits " <>
+        "but no trigger record in carbonite_default.triggers"
+
+    TestRepo.transaction(fn ->
+      insert_transaction()
+      query!("DELETE FROM carbonite_default.triggers;")
+
+      assert_raise Postgrex.Error, msg, fn ->
+        insert_jack()
+      end
+    end)
+  end
 end
