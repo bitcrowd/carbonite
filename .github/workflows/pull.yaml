@@ -41,22 +41,22 @@ jobs:
         with:
           otp-version: ${{matrix.lang.otp}}
           elixir-version: ${{matrix.lang.elixir}}
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: deps
-          key: ${{ runner.os }}-deps-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
+          key: v2-${{ runner.os }}-deps-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-deps-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}
-            ${{ runner.os }}-deps-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}
-            ${{ runner.os }}-deps
-      - uses: actions/cache@v3
+            v2-${{ runner.os }}-deps-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}
+            v2-${{ runner.os }}-deps-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}
+            v2-${{ runner.os }}-deps
+      - uses: actions/cache@v4
         with:
           path: _build
-          key: ${{ runner.os }}-build-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
+          key: v2-${{ runner.os }}-build-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-build-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}
-            ${{ runner.os }}-build-${{ matrix.lang.otp }}-${{ matrix.lang.elixir}}
-            ${{ runner.os }}-build
+            v2-${{ runner.os }}-build-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}
+            v2-${{ runner.os }}-build-${{ matrix.lang.otp }}-${{ matrix.lang.elixir}}
+            v2-${{ runner.os }}-build
       - run: mix deps.get
       - run: mix do ecto.create, ecto.migrate
       - run: mix compile
@@ -74,30 +74,30 @@ jobs:
         with:
           otp-version: ${{ env.otp_version }}
           elixir-version: ${{ env.elixir_version }}
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: deps
-          key: ${{ runner.os }}-deps-${{ env.otp_version }}-${{ env.elixir_version }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
+          key: v2-${{ runner.os }}-deps-${{ env.otp_version }}-${{ env.elixir_version }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-deps-${{ env.otp_version }}-${{ env.elixir_version }}-${{ env.MIX_ENV }}
-            ${{ runner.os }}-deps-${{ env.otp_version }}-${{ env.elixir_version }}
-            ${{ runner.os }}-deps
-      - uses: actions/cache@v3
+            v2-${{ runner.os }}-deps-${{ env.otp_version }}-${{ env.elixir_version }}-${{ env.MIX_ENV }}
+            v2-${{ runner.os }}-deps-${{ env.otp_version }}-${{ env.elixir_version }}
+            v2-${{ runner.os }}-deps
+      - uses: actions/cache@v4
         with:
           path: _build
-          key: ${{ runner.os }}-build-${{ env.otp_version }}-${{ env.elixir_version }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
+          key: v2-${{ runner.os }}-build-${{ env.otp_version }}-${{ env.elixir_version }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-build-${{ env.otp_version }}-${{ env.elixir_version }}-${{ env.MIX_ENV }}
-            ${{ runner.os }}-build-${{ env.otp_version }}-${{ env.elixir_version }}
-            ${{ runner.os }}-build
-      - uses: actions/cache@v3
+            v2-${{ runner.os }}-build-${{ env.otp_version }}-${{ env.elixir_version }}-${{ env.MIX_ENV }}
+            v2-${{ runner.os }}-build-${{ env.otp_version }}-${{ env.elixir_version }}
+            v2-${{ runner.os }}-build
+      - uses: actions/cache@v4
         with:
           path: _plts
-          key: ${{ runner.os }}-plts-${{ env.otp_version }}-${{ env.elixir_version }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
+          key: v2-${{ runner.os }}-plts-${{ env.otp_version }}-${{ env.elixir_version }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            ${{ runner.os }}-plts-${{ env.otp_version }}-${{ env.elixir_version }}-${{ env.MIX_ENV }}
-            ${{ runner.os }}-plts-${{ env.otp_version }}-${{ env.elixir_version }}
-            ${{ runner.os }}-plts
+            v2-${{ runner.os }}-plts-${{ env.otp_version }}-${{ env.elixir_version }}-${{ env.MIX_ENV }}
+            v2-${{ runner.os }}-plts-${{ env.otp_version }}-${{ env.elixir_version }}
+            v2-${{ runner.os }}-plts
       - run: mix deps.get
       - run: mix compile --warnings-as-errors
       - run: mix lint
