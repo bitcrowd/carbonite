@@ -93,7 +93,7 @@ Due to its use of [`pg_current_xact_id`](https://www.postgresql.org/docs/13/func
 # mix.exs
 def deps do
   [
-    {:carbonite, "~> 0.15.0"}
+    {:carbonite, "~> 0.15.1"}
   ]
 end
 ```

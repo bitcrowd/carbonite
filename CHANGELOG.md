@@ -1,4 +1,6 @@
-## Unreleased
+## [0.15.1] - 2025-06-19
+
+**New migration patches:** 12
 
 ### Added
 
