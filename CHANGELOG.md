@@ -4,6 +4,10 @@
 
 - Better error handling when the trigger record is non-existent.
 
+### Fixed
+
+- Fixed incompatibility with Ecto 3.13 as forced `on_conflict` updates on primary keys don't make it into the SQL anymore. See https://github.com/elixir-ecto/ecto_sql/issues/674.
+
 ## [0.15.0] - 2025-01-01
 
 ### Fixed
