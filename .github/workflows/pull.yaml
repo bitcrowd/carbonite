@@ -18,8 +18,8 @@ jobs:
       matrix:
         # Earliest combination possible:
         # - ubuntu-latest (Ubuntu 22) mandates OTP >= 24
-        # - dialyxir uses `Kernel.then` and hence mandates Elixir >= 1.12
-        lang: [{otp: '24.3.4.13', elixir: '1.12.3'}, {otp: '26.0.2', elixir: '1.15.5'}, {otp: '26.2.3', elixir: '1.17.1'}]
+        # - Ecto 3.13 depends on Elixir ~> 1.14
+        lang: [{otp: '24.3.4.13', elixir: '1.14.5'}, {otp: '26.0.2', elixir: '1.15.5'}, {otp: '26.2.3', elixir: '1.17.1'}]
         postgres: ['13.12', '14.5', '16.0']
     services:
       postgres:
@@ -44,19 +44,19 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: deps
-          key: v2-${{ runner.os }}-deps-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
+          key: v3-${{ runner.os }}-deps-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            v2-${{ runner.os }}-deps-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}
-            v2-${{ runner.os }}-deps-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}
-            v2-${{ runner.os }}-deps
+            v3-${{ runner.os }}-deps-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}
+            v3-${{ runner.os }}-deps-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}
+            v3-${{ runner.os }}-deps
       - uses: actions/cache@v4
         with:
           path: _build
-          key: v2-${{ runner.os }}-build-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
+          key: v3-${{ runner.os }}-build-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            v2-${{ runner.os }}-build-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}
-            v2-${{ runner.os }}-build-${{ matrix.lang.otp }}-${{ matrix.lang.elixir}}
-            v2-${{ runner.os }}-build
+            v3-${{ runner.os }}-build-${{ matrix.lang.otp }}-${{ matrix.lang.elixir }}-${{ env.MIX_ENV }}
+            v3-${{ runner.os }}-build-${{ matrix.lang.otp }}-${{ matrix.lang.elixir}}
+            v3-${{ runner.os }}-build
       - run: mix deps.get
       - run: mix do ecto.create, ecto.migrate
       - run: mix compile

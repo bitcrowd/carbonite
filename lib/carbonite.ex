@@ -76,7 +76,7 @@ defmodule Carbonite do
     |> Transaction.changeset()
     |> repo.insert(
       prefix: carbonite_prefix,
-      on_conflict: {:replace, [:id]},
+      on_conflict: {:replace, [:xact_id]},
       conflict_target: [:id],
       returning: true
     )
