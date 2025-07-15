@@ -4,7 +4,9 @@ defmodule Carbonite.ChangeTest do
   use Carbonite.APICase, async: true
   alias Carbonite.Change
 
-  describe "Jason.Encoder implementation" do
+  @json_module if Code.ensure_loaded?(JSON), do: JSON, else: Jason
+
+  describe "JSON Encoder implementation" do
     test "Carbonite.Change can be encoded to JSON" do
       json =
         %Change{
@@ -17,8 +19,8 @@ defmodule Carbonite.ChangeTest do
           changed: ["name"],
           changed_from: %{"name" => "Jane"}
         }
-        |> Jason.encode!()
-        |> Jason.decode!()
+        |> @json_module.encode!()
+        |> @json_module.decode!()
 
       assert json ==
                %{

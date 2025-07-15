@@ -5,6 +5,8 @@ defmodule Carbonite.TransactionTest do
   import Carbonite.Transaction
   alias Carbonite.{Change, Transaction}
 
+  @json_module if Code.ensure_loaded?(JSON), do: JSON, else: Jason
+
   describe "changeset/1" do
     test "transaction_changesets an Ecto.Changeset for a transaction" do
       %Ecto.Changeset{} = changeset = changeset()
@@ -27,7 +29,7 @@ defmodule Carbonite.TransactionTest do
     end
   end
 
-  describe "Jason.Encoder implementation" do
+  describe "JSON encoder implementation" do
     test "Transaction can be encoded to JSON" do
       json =
         %Transaction{
@@ -47,8 +49,8 @@ defmodule Carbonite.TransactionTest do
             }
           ]
         }
-        |> Jason.encode!()
-        |> Jason.decode!()
+        |> @json_module.encode!()
+        |> @json_module.decode!()
 
       assert json ==
                %{
