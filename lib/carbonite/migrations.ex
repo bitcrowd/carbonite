@@ -11,6 +11,8 @@ defmodule Carbonite.Migrations do
   import Carbonite.Migrations.Helper
   import Carbonite.Prefix
 
+  @json_module if Code.ensure_loaded?(JSON), do: JSON, else: Jason
+
   @type patch :: non_neg_integer()
   @type prefix :: binary()
   @type table_name :: binary() | atom()
@@ -373,7 +375,7 @@ defmodule Carbonite.Migrations do
     meta =
       %{type: "migration", direction: direction(), name: to_string(name)}
       |> Map.merge(meta)
-      |> Jason.encode!()
+      |> @json_module.encode!()
 
     statement =
       """

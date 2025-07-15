@@ -19,18 +19,23 @@ defmodule Carbonite.Change do
 
   use Carbonite.Schema
 
-  if Code.ensure_loaded?(Jason.Encoder) do
-    @derive {Jason.Encoder,
-             only: [
-               :id,
-               :op,
-               :table_prefix,
-               :table_name,
-               :table_pk,
-               :data,
-               :changed,
-               :changed_from
-             ]}
+  @encodable_columns [
+    :id,
+    :op,
+    :table_prefix,
+    :table_name,
+    :table_pk,
+    :data,
+    :changed,
+    :changed_from
+  ]
+
+  if Code.ensure_loaded?(JSON) do
+    @derive {JSON.Encoder, only: @encodable_columns}
+  else
+    if Code.ensure_loaded?(Jason.Encoder) do
+      @derive {Jason.Encoder, only: @encodable_columns}
+    end
   end
 
   @primary_key false

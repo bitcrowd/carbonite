@@ -12,8 +12,14 @@ defmodule Carbonite.Transaction do
   use Carbonite.Schema
   import Ecto.Changeset
 
-  if Code.ensure_loaded?(Jason.Encoder) do
-    @derive {Jason.Encoder, only: [:id, :meta, :inserted_at, :changes]}
+  @encodable_columns [:id, :meta, :inserted_at, :changes]
+
+  if Code.ensure_loaded?(JSON) do
+    @derive {JSON.Encoder, only: @encodable_columns}
+  else
+    if Code.ensure_loaded?(Jason.Encoder) do
+      @derive {Jason.Encoder, only: @encodable_columns}
+    end
   end
 
   @primary_key false
