@@ -19,7 +19,7 @@ jobs:
         # Earliest combination possible:
         # - ubuntu-latest (Ubuntu 22) mandates OTP >= 24
         # - Ecto 3.13 depends on Elixir ~> 1.14
-        lang: [{otp: '24.3.4.13', elixir: '1.14.5'}, {otp: '26.0.2', elixir: '1.15.5'}, {otp: '26.2.3', elixir: '1.17.1'}]
+        lang: [{otp: '24.3.4.13', elixir: '1.14.5'}, {otp: '26.0.2', elixir: '1.15.5'}, {otp: '26.2.3', elixir: '1.18.0'}]
         postgres: ['13.12', '14.5', '16.0']
     services:
       postgres:
