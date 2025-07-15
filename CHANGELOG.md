@@ -1,3 +1,9 @@
+## [0.15.2] - 2025-07-15
+
+### Added
+
+- Support for Elixir 1.18's built-in `JSON` (@caleb-restar)
+
 ## [0.15.1] - 2025-06-19
 
 **New migration patches:** 12
