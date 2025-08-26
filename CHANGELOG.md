@@ -1,3 +1,9 @@
+## Unreleased
+
+### Added
+
+- Allow to set the `last_transaction_id` when outbox is created
+
 ## [0.15.2] - 2025-07-15
 
 ### Added

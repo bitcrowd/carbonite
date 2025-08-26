@@ -261,7 +261,8 @@ defmodule Carbonite.Migrations do
   # ------------------------------- outbox setup -----------------------------------
 
   @type outbox_name :: String.t()
-  @type outbox_option :: {:carbonite_prefix, prefix()}
+  @type create_outbox_option ::
+          {:carbonite_prefix, prefix()} | {:last_transaction_id, non_neg_integer()}
 
   @doc """
   Inserts an outbox record into the database.
@@ -269,20 +270,24 @@ defmodule Carbonite.Migrations do
   ## Options
 
   * `carbonite_prefix` is the schema of the audit trail, defaults to `"carbonite_default"`
+  * `last_transaction_id` allows to start the outbox processing *after* the given transaction id
   """
   @doc since: "0.4.0"
   @spec create_outbox(outbox_name()) :: :ok
-  @spec create_outbox(outbox_name(), [outbox_option()]) :: :ok
+  @spec create_outbox(outbox_name(), [create_outbox_option()]) :: :ok
   def create_outbox(outbox_name, opts \\ []) do
     carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
+    last_transaction_id = Keyword.get(opts, :last_transaction_id, "DEFAULT")
 
     """
     INSERT INTO #{carbonite_prefix}.outboxes (
       name,
+      last_transaction_id,
       inserted_at,
       updated_at
     ) VALUES (
       '#{outbox_name}',
+      #{last_transaction_id},
       NOW(),
       NOW()
     );
@@ -291,6 +296,8 @@ defmodule Carbonite.Migrations do
 
     :ok
   end
+
+  @type drop_outbox_option :: {:carbonite_prefix, prefix()}
 
   @doc """
   Removes an outbox record.
@@ -301,7 +308,7 @@ defmodule Carbonite.Migrations do
   """
   @doc since: "0.4.0"
   @spec drop_outbox(outbox_name()) :: :ok
-  @spec drop_outbox(outbox_name(), [outbox_option()]) :: :ok
+  @spec drop_outbox(outbox_name(), [drop_outbox_option()]) :: :ok
   def drop_outbox(outbox_name, opts \\ []) do
     carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
 
