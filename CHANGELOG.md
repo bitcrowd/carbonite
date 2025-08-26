@@ -3,6 +3,7 @@
 ### Added
 
 - Allow to set the `last_transaction_id` when outbox is created
+- Accept Ecto `dynamic/2` expressions for the `:filter` option on `Carbonite.process/4`.
 
 ## [0.15.2] - 2025-07-15
 

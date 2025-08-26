@@ -13,6 +13,7 @@ defmodule Carbonite do
 
   @moduledoc since: "0.1.0"
 
+  import Ecto.Query
   alias Carbonite.{Outbox, Prefix, Query, Schema, Transaction, Trigger}
   require Prefix
   require Schema
@@ -136,7 +137,7 @@ defmodule Carbonite do
 
   @type process_option ::
           Carbonite.Query.outbox_queue_option()
-          | {:filter, (Ecto.Query.t() -> Ecto.Query.t())}
+          | {:filter, (Ecto.Query.t() -> Ecto.Query.t()) | Ecto.Query.dynamic_expr()}
           | {:chunk, pos_integer()}
 
   @type process_func_option :: {:memo, Outbox.memo()} | {:discard_last, boolean()}
@@ -262,7 +263,7 @@ defmodule Carbonite do
 
   * `min_age` - the minimum age of a record, defaults to 300 seconds (set nil to disable)
   * `limit` - limits the query in size, defaults to 100 (set nil to disable)
-  * `filter` - function for refining the batch query, defaults to nil
+  * `filter` - Ecto `dynamic/2` or function for refining the batch query, defaults to nil
   * `chunk` - defines the size of the chunk passed to the process function, defaults to 1
   * `carbonite_prefix` - defines the audit trail's schema, defaults to `"carbonite_default"`
   """
@@ -291,17 +292,20 @@ defmodule Carbonite do
   end
 
   defp query_func(repo, opts) do
-    filter = Keyword.get(opts, :filter) || (& &1)
+    filter = Keyword.get(opts, :filter, dynamic(true))
     chunk = Keyword.get(opts, :chunk, 1)
 
     fn outbox ->
       outbox
       |> Carbonite.Query.outbox_queue(opts)
-      |> filter.()
+      |> apply_filter(filter)
       |> repo.all()
       |> Enum.chunk_every(chunk)
     end
   end
+
+  defp apply_filter(query, filter) when is_function(filter), do: filter.(query)
+  defp apply_filter(query, %Ecto.Query.DynamicExpr{} = filter), do: where(query, ^filter)
 
   defp process_func(process_func) do
     fn chunk, outbox ->
