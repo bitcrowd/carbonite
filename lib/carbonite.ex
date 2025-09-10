@@ -84,6 +84,45 @@ defmodule Carbonite do
   end
 
   @doc """
+  Deletes the current `t:Carbonite.Transaction.t/0` if no changes have been recorded.
+
+  This is sometimes useful to avoid "orphaned" transactions (without change records)
+  for operations that usually modify any tracked tables but in rare cases do nothing.
+
+  As the INSERT and DELETE on the `transactions` table has a performance cost, it is
+  usually preferable to skip the transaction entirely, if possible.
+
+  ## Example
+
+      MyApp.Repo.transaction(fn ->
+        Carbonite.insert_transaction(MyApp.Repo)
+        do_something_that_may_or_may_not_cause_a_change_to_be_recorded()
+        Carbonite.delete_transaction_if_empty(MyApp.Repo)
+      end)
+
+  ## Parameters
+
+  * `repo` - the Ecto repository
+  * `opts` - optional keyword list
+
+  ## Options
+
+  * `carbonite_prefix` - defines the audit trail's schema, defaults to `"carbonite_default"`
+  """
+  @doc since: "0.16.0"
+  @spec delete_transaction_if_empty(repo()) :: {:ok, non_neg_integer()}
+  @spec delete_transaction_if_empty(repo(), [prefix_option()]) :: {:ok, non_neg_integer()}
+  def delete_transaction_if_empty(repo, opts \\ []) do
+    {rows_deleted, _} =
+      opts
+      |> Query.current_transaction()
+      |> Query.without_changes()
+      |> repo.delete_all()
+
+    {:ok, rows_deleted}
+  end
+
+  @doc """
   Fetches all changes of the current transaction from the database.
 
   Make sure to run this within a transaction.

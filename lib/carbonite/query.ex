@@ -102,6 +102,24 @@ defmodule Carbonite.Query do
     |> maybe_preload(opts, :changes, from_with_prefix(Change, opts))
   end
 
+  @doc """
+  Refines a transaction query to only contain transactions without associated changes.
+  """
+  @doc since: "0.16.0"
+  @spec without_changes(Ecto.Query.t()) :: Ecto.Query.t()
+  def without_changes(
+        %Ecto.Query{from: %{source: {"transactions", Transaction}, prefix: prefix}} = query
+      ) do
+    changes =
+      from(c in Change,
+        prefix: ^prefix,
+        where: parent_as(:transaction).id == c.transaction_id,
+        select: 1
+      )
+
+    from(t in query, as: :transaction, where: not exists(subquery(changes)))
+  end
+
   # Returns all triggers.
   @doc false
   @spec triggers() :: Ecto.Query.t()

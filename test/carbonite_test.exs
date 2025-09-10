@@ -3,7 +3,7 @@
 defmodule CarboniteTest do
   use Carbonite.APICase, async: true
   import Carbonite
-  alias Carbonite.{Outbox, Rabbit, TestRepo, Transaction}
+  alias Carbonite.{Outbox, Query, Rabbit, TestRepo, Transaction}
   alias Ecto.Adapters.SQL
 
   defp insert_jack do
@@ -55,6 +55,25 @@ defmodule CarboniteTest do
 
       assert %{num_rows: 1} =
                SQL.query!(TestRepo, "SELECT * FROM alternate_test_schema.transactions")
+    end
+  end
+
+  describe "delete_transaction_if_empty/2" do
+    test "deletes the current transaction if no changes were recorded" do
+      insert_transaction(TestRepo)
+
+      assert delete_transaction_if_empty(TestRepo) == {:ok, 1}
+
+      refute TestRepo.exists?(Query.current_transaction())
+    end
+
+    test "keeps the current transaction otherwise" do
+      insert_transaction(TestRepo)
+      insert_jack()
+
+      assert delete_transaction_if_empty(TestRepo) == {:ok, 0}
+
+      assert TestRepo.exists?(Query.current_transaction())
     end
   end
 
