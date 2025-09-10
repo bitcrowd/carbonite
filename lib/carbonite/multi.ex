@@ -18,7 +18,8 @@ defmodule Carbonite.Multi do
   @doc """
   Adds an insert operation for a `Carbonite.Transaction` to an `Ecto.Multi`.
 
-  Multi step is called `:carbonite_transaction`.
+  Multi step is called `:carbonite_transaction` if no `:carbonite_prefix` option
+  is given, otherwise `{:carbonite_transaction, <prefix>}`.
 
   See `Carbonite.insert_transaction/3` for options.
 
