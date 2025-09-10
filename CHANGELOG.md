@@ -4,6 +4,7 @@
 
 - Allow to set the `last_transaction_id` when outbox is created
 - Accept Ecto `dynamic/2` expressions for the `:filter` option on `Carbonite.process/4`.
+- New `Carbonite.delete_transaction_if_empty/2` deletes the current transaction if no changes have been recorded.
 
 ### Changed
 

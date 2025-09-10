@@ -77,6 +77,16 @@ defmodule Carbonite.QueryTest do
     end
   end
 
+  describe "without_changes/1" do
+    setup [:insert_past_transactions, :insert_rabbits]
+
+    test "filters a transaction query for orphans" do
+      # Rabbit transaction has changes, past transactions don't.
+      assert length(TestRepo.all(Query.transactions())) == 4
+      assert length(TestRepo.all(Query.without_changes(Query.transactions()))) == 3
+    end
+  end
+
   describe "outbox/1" do
     defp outbox(name) do
       name

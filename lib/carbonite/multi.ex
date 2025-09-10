@@ -34,16 +34,34 @@ defmodule Carbonite.Multi do
   @spec insert_transaction(Multi.t(), params()) :: Multi.t()
   @spec insert_transaction(Multi.t(), params(), [prefix_option()]) :: Multi.t()
   def insert_transaction(%Multi{} = multi, params \\ %{}, opts \\ []) do
-    name =
-      if carbonite_prefix = Keyword.get(opts, :carbonite_prefix) do
-        {:carbonite_transaction, carbonite_prefix}
-      else
-        :carbonite_transaction
-      end
-
-    Multi.run(multi, name, fn repo, _state ->
+    Multi.run(multi, maybe_with_prefix(:carbonite_transaction, opts), fn repo, _state ->
       Carbonite.insert_transaction(repo, params, opts)
     end)
+  end
+
+  @doc """
+  Adds an operation `Ecto.Multi` that calls `Carbonite.delete_transaction_if_empty/2`.
+
+  Multi step is called `:delete_carbonite_transaction` if no `:carbonite_prefix` option
+  is given, otherwise `{:delete_carbonite_transaction, <prefix>}`.
+
+  See `Carbonite.delete_transaction_if_empty/2` for options.
+  """
+  @doc since: "0.16.0"
+  @spec delete_transaction_if_empty(Multi.t()) :: Multi.t()
+  @spec delete_transaction_if_empty(Multi.t(), [prefix_option()]) :: Multi.t()
+  def delete_transaction_if_empty(%Multi{} = multi, opts \\ []) do
+    Multi.run(multi, maybe_with_prefix(:delete_carbonite_transaction, opts), fn repo, _state ->
+      Carbonite.delete_transaction_if_empty(repo, opts)
+    end)
+  end
+
+  defp maybe_with_prefix(name, opts) do
+    if carbonite_prefix = Keyword.get(opts, :carbonite_prefix) do
+      {name, carbonite_prefix}
+    else
+      name
+    end
   end
 
   @doc """
