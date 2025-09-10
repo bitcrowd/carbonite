@@ -226,6 +226,17 @@ defmodule CarboniteTest do
                end)
     end
 
+    test "accepts a filter dynamic expression for refining the batch query" do
+      max_inserted_at = DateTime.utc_now() |> DateTime.add(-9_000)
+      filter = dynamic([t], t.inserted_at < ^max_inserted_at)
+
+      assert {:ok, _outbox} =
+               process(TestRepo, "rabbits", [chunk: 100, filter: filter], fn txs, _memo ->
+                 assert ids(txs) == [100_000]
+                 :cont
+               end)
+    end
+
     test "carbonite_prefix option works as expected" do
       {:ok, outbox} =
         process(TestRepo, "alternate_outbox", [carbonite_prefix: "alternate_test_schema"], fn txs,
