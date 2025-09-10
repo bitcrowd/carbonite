@@ -33,7 +33,14 @@ defmodule Carbonite.Multi do
   @spec insert_transaction(Multi.t(), params()) :: Multi.t()
   @spec insert_transaction(Multi.t(), params(), [prefix_option()]) :: Multi.t()
   def insert_transaction(%Multi{} = multi, params \\ %{}, opts \\ []) do
-    Multi.run(multi, :carbonite_transaction, fn repo, _state ->
+    name =
+      if carbonite_prefix = Keyword.get(opts, :carbonite_prefix) do
+        {:carbonite_transaction, carbonite_prefix}
+      else
+        :carbonite_transaction
+      end
+
+    Multi.run(multi, name, fn repo, _state ->
       Carbonite.insert_transaction(repo, params, opts)
     end)
   end

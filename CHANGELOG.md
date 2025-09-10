@@ -5,6 +5,11 @@
 - Allow to set the `last_transaction_id` when outbox is created
 - Accept Ecto `dynamic/2` expressions for the `:filter` option on `Carbonite.process/4`.
 
+### Changed
+
+- Multi steps build by `Carbonite.Multi.insert_transaction/3` are now called `{:carbonite_transactions, <prefix>}`
+  when the `:carbonite_prefix` option is given to allow inserting transactions into multiple prefixes in one multi.
+
 ## [0.15.2] - 2025-07-15
 
 ### Added
