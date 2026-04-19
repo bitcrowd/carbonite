@@ -44,6 +44,16 @@ defmodule Carbonite.MultiTest do
     end
   end
 
+  describe "fetch_changes/2" do
+    test "operation names include the given prefix option" do
+      assert %Ecto.Multi{operations: [{:carbonite_changes, _}]} =
+               fetch_changes(Ecto.Multi.new())
+
+      assert %Ecto.Multi{operations: [{{:carbonite_changes, "custom"}, _}]} =
+               fetch_changes(Ecto.Multi.new(), carbonite_prefix: "custom")
+    end
+  end
+
   describe "override_mode/2" do
     test "enables override mode for the current transaction" do
       assert {:ok, _} =
@@ -52,6 +62,14 @@ defmodule Carbonite.MultiTest do
                |> Ecto.Multi.put(:params, %{name: "Jack", age: 99})
                |> Ecto.Multi.insert(:rabbit, &Rabbit.create_changeset(&1.params))
                |> TestRepo.transaction()
+    end
+
+    test "operation names include the given prefix option" do
+      assert %Ecto.Multi{operations: [{:carbonite_triggers, _}]} =
+               override_mode(Ecto.Multi.new())
+
+      assert %Ecto.Multi{operations: [{{:carbonite_triggers, "custom"}, _}]} =
+               override_mode(Ecto.Multi.new(), carbonite_prefix: "custom")
     end
   end
 end

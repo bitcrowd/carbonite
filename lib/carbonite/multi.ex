@@ -69,7 +69,8 @@ defmodule Carbonite.Multi do
 
   Useful for returning all transaction changes to the caller.
 
-  Multi step is called `:carbonite_changes`.
+  Multi step is called `:carbonite_changes` if no `:carbonite_prefix` option
+  is given, otherwise `{:carbonite_changes, <prefix>}`.
 
   See `Carbonite.fetch_changes/2` for options.
 
@@ -84,7 +85,7 @@ defmodule Carbonite.Multi do
   @spec fetch_changes(Multi.t()) :: Multi.t()
   @spec fetch_changes(Multi.t(), [prefix_option()]) :: Multi.t()
   def fetch_changes(%Multi{} = multi, opts \\ []) do
-    Multi.run(multi, :carbonite_changes, fn repo, _state ->
+    Multi.run(multi, maybe_with_prefix(:carbonite_changes, opts), fn repo, _state ->
       Carbonite.fetch_changes(repo, opts)
     end)
   end
@@ -92,13 +93,16 @@ defmodule Carbonite.Multi do
   @doc """
   Sets the current transaction to "override mode" for all tables in the audit log.
 
+  Multi step is called `:carbonite_triggers` if no `:carbonite_prefix` option
+  is given, otherwise `{:carbonite_triggers, <prefix>}`.
+
   See `Carbonite.override_mode/2` for options.
   """
   @doc since: "0.2.0"
   @spec override_mode(Multi.t()) :: Multi.t()
   @spec override_mode(Multi.t(), [{:to, Trigger.mode()} | prefix_option()]) :: Multi.t()
   def override_mode(%Multi{} = multi, opts \\ []) do
-    Multi.run(multi, :carbonite_triggers, fn repo, _state ->
+    Multi.run(multi, maybe_with_prefix(:carbonite_triggers, opts), fn repo, _state ->
       {:ok, Carbonite.override_mode(repo, opts)}
     end)
   end

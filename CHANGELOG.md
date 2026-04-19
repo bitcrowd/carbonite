@@ -1,3 +1,11 @@
+## [Unreleased]
+
+### Changed
+
+- Multi steps built by `Carbonite.Multi.fetch_changes/2` and `Carbonite.Multi.override_mode/2` are now called
+  `{:carbonite_changes, <prefix>}` and `{:carbonite_triggers, <prefix>}` respectively when the `:carbonite_prefix`
+  option is given, extending the multi-stream support introduced in 0.16.0 to the remaining `Carbonite.Multi` functions. (@Hedde)
+
 ## [0.16.0] - 2025-09-10
 
 ### Added
