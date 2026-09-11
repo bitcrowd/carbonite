@@ -45,7 +45,7 @@ defmodule Carbonite.MixProject do
       licenses: ["Apache-2.0"],
       links: %{
         Website: "https://github.com/bitcrowd/carbonite",
-        Changelog: "#{@source_url}/blob/#{@version}/CHANGELOG.md",
+        Changelog: "#{@source_url}/blob/v#{@version}/CHANGELOG.md",
         GitHub: @source_url
       }
     ]
