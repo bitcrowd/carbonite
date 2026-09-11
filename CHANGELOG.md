@@ -1,3 +1,10 @@
+## Unreleased
+
+### Added
+
+- Add `last_transaction_id: :max` option `Migrations.create_outbox/2` to allow for convenient
+  outbox start after the existing transactions.
+
 ## [0.16.1] - 2026-04-19
 
 ### Changed
