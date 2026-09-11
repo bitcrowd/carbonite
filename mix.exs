@@ -4,12 +4,12 @@ defmodule Carbonite.MixProject do
   use Mix.Project
 
   @version "0.16.1"
-
+  @source_url "https://github.com/bitcrowd/carbonite"
   def project do
     [
       app: :carbonite,
       version: @version,
-      elixir: "~> 1.14",
+      elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
@@ -27,14 +27,12 @@ defmodule Carbonite.MixProject do
 
       # hexdocs.pm
       name: "Carbonite",
-      source_url: "https://github.com/bitcrowd/carbonite",
-      homepage_url: "https://github.com/bitcrowd/carbonite",
       docs: [
         main: "Carbonite",
         logo: ".logo_for_docs.png",
         extras: ["CHANGELOG.md": [title: "Changelog"], LICENSE: [title: "License"]],
         source_ref: "v#{@version}",
-        source_url: "https://github.com/bitcrowd/carbonite",
+        source_url: @source_url,
         formatters: ["html"],
         skip_undefined_reference_warnings_on: ["CHANGELOG.md"]
       ]
@@ -45,7 +43,11 @@ defmodule Carbonite.MixProject do
     [
       maintainers: ["@bitcrowd"],
       licenses: ["Apache-2.0"],
-      links: %{github: "https://github.com/bitcrowd/carbonite"}
+      links: %{
+        Website: "https://github.com/bitcrowd/carbonite",
+        Changelog: "#{@source_url}/blob/#{@version}/CHANGELOG.md",
+        GitHub: @source_url
+      }
     ]
   end
 
