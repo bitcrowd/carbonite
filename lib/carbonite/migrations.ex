@@ -262,7 +262,7 @@ defmodule Carbonite.Migrations do
 
   @type outbox_name :: String.t()
   @type create_outbox_option ::
-          {:carbonite_prefix, prefix()} | {:last_transaction_id, non_neg_integer()}
+          {:carbonite_prefix, prefix()} | {:last_transaction_id, non_neg_integer() | :max}
 
   @doc """
   Inserts an outbox record into the database.
@@ -270,14 +270,20 @@ defmodule Carbonite.Migrations do
   ## Options
 
   * `carbonite_prefix` is the schema of the audit trail, defaults to `"carbonite_default"`
-  * `last_transaction_id` allows to start the outbox processing *after* the given transaction id
+  * `last_transaction_id` allows to start the outbox processing *after* the given transaction id,
+    or `:max` to make it start after the most current transaction.
   """
   @doc since: "0.4.0"
   @spec create_outbox(outbox_name()) :: :ok
   @spec create_outbox(outbox_name(), [create_outbox_option()]) :: :ok
   def create_outbox(outbox_name, opts \\ []) do
     carbonite_prefix = Keyword.get(opts, :carbonite_prefix, default_prefix())
-    last_transaction_id = Keyword.get(opts, :last_transaction_id, "DEFAULT")
+
+    last_transaction_id =
+      case Keyword.get(opts, :last_transaction_id, "DEFAULT") do
+        :max -> "COALESCE((SELECT MAX(id) FROM #{carbonite_prefix}.transactions), 0)"
+        other -> other
+      end
 
     """
     INSERT INTO #{carbonite_prefix}.outboxes (

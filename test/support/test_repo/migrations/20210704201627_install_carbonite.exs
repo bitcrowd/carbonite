@@ -9,7 +9,7 @@ defmodule Carbonite.TestRepo.Migrations.InstallCarbonite do
     M.create_trigger(:rabbits)
     M.put_trigger_config(:rabbits, :excluded_columns, ["age"])
     M.put_trigger_config(:rabbits, :store_changed_from, true)
-    M.create_outbox("rabbits")
+    M.create_outbox("rabbits", last_transaction_id: :max)
   end
 
   def down do
